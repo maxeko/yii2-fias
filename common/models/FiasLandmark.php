@@ -2,12 +2,15 @@
 
 namespace ejen\fias\common\models;
 
+use ejen\fias\Module;
+
 class FiasLandmark extends \yii\db\ActiveRecord
 {
-
     public static function getDb()
     {
-        return \ejen\fias\Module::getInstance()->getDb();
+        $module = Module::getInstance();
+
+        return !empty($module) ? $module->getDb() : parent::getDb();
     }
 
     public static function tableName()
