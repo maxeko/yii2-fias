@@ -6,6 +6,17 @@ class m160510_195845_socrbase extends Migration
 {
     public $tableName = '{{%fias_socrbase}}';
 
+    public function init()
+    {
+        $module = ejen\fias\Module::getInstance();
+
+        if (!empty($module)) {
+            $this->db = $module->getDb();
+        }
+
+        parent::init();
+    }
+
     public function up()
     {
         $tableOptions = null;

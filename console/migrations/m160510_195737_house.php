@@ -6,6 +6,17 @@ class m160510_195737_house extends Migration
 {
     public $tableName = '{{%fias_house}}';
 
+    public function init()
+    {
+        $module = ejen\fias\Module::getInstance();
+
+        if (!empty($module)) {
+            $this->db = $module->getDb();
+        }
+
+        parent::init();
+    }
+
     public function up()
     {
         $tableOptions = null;
@@ -23,7 +34,7 @@ class m160510_195737_house extends Migration
             'terrifnsul' => 'VARCHAR(4)',
             'okato' => 'VARCHAR(11)',
             'oktmo' => 'VARCHAR(11)',
-            'updatedate' => 'DATETIME',
+            'updatedate' => $this->dateTime(),
             'housenum' => 'VARCHAR(20)',
             'eststatus' => 'INT',
             'buildnum' => 'VARCHAR(10)',
