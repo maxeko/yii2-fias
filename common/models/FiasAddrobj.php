@@ -54,6 +54,7 @@ use \ejen\fias\Module;
  */
 class FiasAddrobj extends ActiveRecord
 {
+
     public static function getDb()
     {
         $module = Module::getInstance();
@@ -92,31 +93,148 @@ class FiasAddrobj extends ActiveRecord
 
     public function getFullName()
     {
-        switch ($this->aolevel)
-        {
+        switch ($this->aolevel) {
             // Регион
             case 1:
-                if ($this->shortname == 'обл') return $this->formalname." область";
+                if ($this->shortname == 'обл')
+                    return $this->formalname . " область";
                 break;
             // Район
             case 3:
-                if ($this->shortname == 'р-н') return $this->formalname." район";
+                if ($this->shortname == 'р-н')
+                    return $this->formalname . " район";
                 break;
             case 4:
-                if ($this->shortname == 'г') return "город ".$this->formalname;
+                if ($this->shortname == 'г')
+                    return "город " . $this->formalname;
                 break;
             // Населенный пункт
             case 6:
-                if ($this->shortname == 'д') return "деревня ".$this->formalname;
-                if ($this->shortname == 'с') return "село ".$this->formalname;
-                if ($this->shortname == 'рп') return "рабочий поселок ".$this->formalname;
+                if ($this->shortname == 'д')
+                    return "деревня " . $this->formalname;
+                if ($this->shortname == 'с')
+                    return "село " . $this->formalname;
+                if ($this->shortname == 'рп')
+                    return "рабочий поселок " . $this->formalname;
                 break;
         }
-        return $this->formalname." ".$this->shortname;
+        return $this->formalname . " " . $this->shortname;
     }
 
     public function getName()
     {
-        return $this->formalname." ".$this->shortname;
+        return $this->formalname . " " . $this->shortname;
     }
+
+    public static function getRegions($formalname = null)
+    {
+        $data = ['aolevel' => 1, 'formalname' => $formalname];
+
+        $regions = self::getList($data);
+
+        return $regions;
+    }
+
+    public static function showChildren($parentGuid, $formalname = null, $count = 100)
+    {
+        $parentAddrobj = FiasAddrobj::find()
+        ->where(['aoguid' => $parentGuid])
+        ->one();
+
+        if (empty($parentAddrobj)) {
+            return;
+        }
+
+        /* @var ActiveQuery $query */
+        $query = $parentAddrobj->getChildren()->
+        select("*,
+                (fias_addrobj.shortname || ' ' || fias_addrobj.formalname) AS title,
+                fias_addrobj.aoguid AS id
+        ")->
+        where(['currstatus' => 0])->
+        orderBy(['formalname' => SORT_ASC])->
+        limit($count)->
+        distinct();
+
+        if (!empty($formalname)) {
+            $query->andWhere([
+                'ilike', 'formalname', $formalname
+            ]);
+        }
+
+        /* @var FiasAddrobj[] $children */
+        $children = $query->asArray()->all();
+
+        return $children;
+    }
+
+    public static function showHouses($parentGuid, $formalname = null, $count = 100)
+    {
+        $parentAddrobj = FiasAddrobj::find()
+        ->where(['aoguid' => $parentGuid])
+        ->one();
+
+        if (empty($parentAddrobj)) {
+            return;
+        }
+
+        /* @var ActiveQuery $query */
+        $query = $parentAddrobj->getHouses()->
+        select("*,
+                fias_house.housenum AS title,
+                fias_house.houseguid AS id
+        ")->
+        orderBy(['buildnum' => SORT_ASC])->
+        andWhere(['>', 'enddate', 'NOW()'])->
+        andWhere(['strstatus' => 0])->
+        limit($count)->
+        distinct();
+
+        if (!empty($formalname)) {
+            $query->andWhere([
+                'ilike', 'housenum', $formalname
+            ]);
+        }
+
+        /* @var FiasAddrobj[] $children */
+        $houses = $query->asArray()->all();
+
+        return $houses;
+    }
+
+    public static function getList(
+    $data = [
+        'aolevel' => 1,
+        'formalname' => null,
+        'getCount' => false
+    ])
+    {
+        $where = [];
+
+        if (!empty($data['aolevel'])) {
+            $where['aolevel'] = $data['aolevel'];
+        }
+
+        $addressesQuery = FiasAddrobj::find()->
+        select("*,
+                (fias_addrobj.formalname || ' ' || fias_addrobj.shortname) AS title,
+                fias_addrobj.aoguid AS id
+        ")->
+        where($where);
+
+        if (!empty($data['formalname'])) {
+            $addressesQuery = $addressesQuery->andWhere(['ilike', 'formalname', $data['formalname']]);
+        }
+
+        $addresses = [];
+
+        if (!empty($data['getCount'])) {
+            $addresses = $addressesQuery->asArray()->count();
+        } else {
+            $addresses = $addressesQuery->asArray()->all();
+        }
+
+        return $addresses;
+    }
+
 }
