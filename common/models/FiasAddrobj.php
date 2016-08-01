@@ -369,7 +369,7 @@ class FiasAddrobj extends ActiveRecord
         andWhere(['fias_house.strstatus' => 0]);
 
         if (!empty($data['getCount'])) {
-            $streetsCount = $query->all();
+            $streetsCount = $query->count();
 
             return $streetsCount;
         }
