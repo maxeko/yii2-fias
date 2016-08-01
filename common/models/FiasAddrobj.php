@@ -126,6 +126,372 @@ class FiasAddrobj extends ActiveRecord
         return $this->formalname . " " . $this->shortname;
     }
 
+    public static function findAddress(
+    $data = [
+        'region_id' => null,
+        'city_id' => null,
+        'street_id' => null,
+        'houseguid' => null,
+        'offset' => 0,
+        'limit' => 50
+    ]
+    )
+    {
+        $addresses = [];
+
+        if (!empty($data['houseguid']) || (!empty($data['housenum']) && !empty($data['street_id']))) {
+            $addresses = self::getAddressByHouseComplete($data);
+            return $addresses;
+        }
+
+        if (!empty($data['street'])) {
+            $addresses = self::getAddressByStreetComplete($data);
+            return $addresses;
+        }
+
+        if (!empty($data['city'])) {
+            $addresses = self::getAddressByCityComplete($data);
+            return $addresses;
+        }
+
+        if (!empty($data['region'])) {
+            $addresses = self::getAddressByRegionComplete($data);
+            return $addresses;
+        }
+    }
+
+    public static function getAddressByRegionComplete(
+    $data = [
+        'region_id' => null,
+        'offset' => 0,
+        'limit' => 50
+    ])
+    {
+        $addresses = [];
+        $addresses['items'] = self::getAddressByRegion($data);
+        $addresses['count_total'] = self::getCountAddressByRegion($data);
+        $addresses['offset'] = $data['offset'];
+
+        return $addresses;
+    }
+
+    public static function getCountAddressByRegion(
+    $data = [
+        'region_id' => null,
+        'offset' => 0,
+        'limit' => 50,
+        'getCount' => true
+    ])
+    {
+        $data['getCount'] = true;
+        $data['limit'] = null;
+
+        $addressesCount = self::getAddressByRegion($data);
+
+        return $addressesCount;
+    }
+
+    public static function getAddressByRegion(
+    $data = [
+        'region_id' => null,
+        'offset' => 0,
+        'limit' => 50,
+        'getCount' => false
+    ]
+    )
+    {
+        /* @var ActiveQuery $query */
+        $query = FiasHouse::find()->
+        innerJoinWith(['addrobj AS address' => function($query) {
+                $query->andWhere(['address.currstatus' => 0]);
+            },
+            'addrobj.parent AS parent' => function($query) {
+                $query->andWhere(['parent.currstatus' => 0]);
+            },
+            'addrobj.parent.parent AS parent2' => function($query) use ($data) {
+                $query->andWhere(['parent2.currstatus' => 0]);
+                $query->andWhere(['parent2.aoguid' => $data['region_id']]);
+            }], true)->
+        indexBy('houseguid')->
+        andWhere(['>', 'fias_house.enddate', 'NOW()'])->
+        andWhere(['fias_house.strstatus' => 0]);
+
+        if (!empty($data['getCount'])) {
+            $regionsCount = $query->count();
+
+            return $regionsCount;
+        }
+
+        if (!empty($data['limit'])) {
+            $query = $query->offset($data['offset'])->limit($data['limit']);
+        }
+
+        /* @var FiasAddrobj[] $children */
+        $query = $query->orderBy([
+            'parent2.formalname' => SORT_ASC,
+            'parent.formalname' => SORT_ASC,
+            'address.formalname' => SORT_ASC,
+            "(substring(fias_house.housenum, '^[0-9]+'))::int,substring(fias_house.housenum, '[^0-9_].*$')" => SORT_ASC
+        ]);
+
+        $regions = $query->asArray()->all();
+
+        return $regions;
+    }
+
+    public static function getAddressBycityComplete(
+    $data = [
+        'city_id' => null,
+        'offset' => 0,
+        'limit' => 50
+    ])
+    {
+        $addresses = [];
+        $addresses['items'] = self::getAddressByCity($data);
+        $addresses['count_total'] = self::getCountAddressByCity($data);
+        $addresses['offset'] = $data['offset'];
+
+        return $addresses;
+    }
+
+    public static function getCountAddressByCity(
+    $data = [
+        'city_id' => null,
+        'offset' => 0,
+        'limit' => 50,
+        'getCount' => true
+    ])
+    {
+        $data['getCount'] = true;
+        $data['limit'] = null;
+
+        $addressesCount = self::getAddressByCity($data);
+
+        return $addressesCount;
+    }
+
+    public static function getAddressByCity(
+    $data = [
+        'city_id' => null,
+        'offset' => 0,
+        'limit' => 50,
+        'getCount' => false
+    ]
+    )
+    {
+        /* @var ActiveQuery $query */
+        $query = FiasHouse::find()->
+        innerJoinWith(['addrobj AS address' => function($query) {
+                $query->andWhere(['address.currstatus' => 0]);
+            },
+            'addrobj.parent AS parent' => function($query) use ($data) {
+                $query->andWhere(['parent.currstatus' => 0]);
+                $query->andWhere(['parent.aoguid' => $data['city_id']]);
+            },
+            'addrobj.parent.parent AS parent2' => function($query) {
+                $query->andWhere(['parent2.currstatus' => 0]);
+            }], true)->
+        indexBy('houseguid')->
+        andWhere(['>', 'fias_house.enddate', 'NOW()'])->
+        andWhere(['fias_house.strstatus' => 0]);
+
+        if (!empty($data['getCount'])) {
+            $citysCount = $query->count();
+
+            return $citysCount;
+        }
+
+        if (!empty($data['limit'])) {
+            $query = $query->offset($data['offset'])->limit($data['limit']);
+        }
+
+        /* @var FiasAddrobj[] $children */
+        $query = $query->orderBy([
+            'parent2.formalname' => SORT_ASC,
+            'parent.formalname' => SORT_ASC,
+            'address.formalname' => SORT_ASC,
+            "(substring(fias_house.housenum, '^[0-9]+'))::int,substring(fias_house.housenum, '[^0-9_].*$')" => SORT_ASC
+        ]);
+
+        $cities = $query->asArray()->all();
+
+        return $cities;
+    }
+
+    public static function getAddressByStreetComplete(
+    $data = [
+        'streetguid' => null,
+        'offset' => 0,
+        'limit' => 50
+    ])
+    {
+        $addresses = [];
+        $addresses['items'] = self::getAddressByStreet($data);
+        $addresses['count_total'] = self::getCountAddressByStreet($data);
+        $addresses['offset'] = $data['offset'];
+
+        return $addresses;
+    }
+
+    public static function getCountAddressByStreet(
+    $data = [
+        'streetguid' => null,
+        'offset' => 0,
+        'limit' => 50,
+        'getCount' => true
+    ])
+    {
+        $data['getCount'] = true;
+        $data['limit'] = null;
+
+        $addressesCount = self::getAddressByStreet($data);
+
+        return $addressesCount;
+    }
+
+    public static function getAddressByStreet(
+    $data = [
+        'street_id' => null,
+        'offset' => 0,
+        'limit' => 50,
+        'getCount' => false
+    ]
+    )
+    {
+        /* @var ActiveQuery $query */
+        $query = FiasHouse::find()->
+        innerJoinWith(['addrobj AS address' => function($query) use ($data) {
+                $query->andWhere(['address.currstatus' => 0]);
+                $query->andWhere(['address.aoguid' => $data['street_id']]);
+            }], true)->
+        indexBy('houseguid')->
+        andWhere(['>', 'fias_house.enddate', 'NOW()'])->
+        andWhere(['fias_house.strstatus' => 0]);
+
+        if (!empty($data['getCount'])) {
+            $streetsCount = $query->all();
+
+            return $streetsCount;
+        }
+
+        $query = $query->joinWith([
+            'addrobj.parent AS parent' => function($query) {
+                $query->andWhere(['parent.currstatus' => 0]);
+            },
+            'addrobj.parent.parent AS parent2' => function($query) {
+                $query->andWhere(['parent2.currstatus' => 0]);
+            }], true);
+
+        /* @var FiasAddrobj[] $children */
+        $query = $query->orderBy([
+            'parent2.formalname' => SORT_ASC,
+            'parent.formalname' => SORT_ASC,
+            'address.formalname' => SORT_ASC,
+            "(substring(fias_house.housenum, '^[0-9]+'))::int,substring(fias_house.housenum, '[^0-9_].*$')" => SORT_ASC
+        ]);
+
+        if (!empty($data['limit'])) {
+            $query = $query->offset($data['offset'])->limit($data['limit']);
+        }
+
+        $streets = $query->asArray()->all();
+
+        return $streets;
+    }
+
+    public static function getAddressByHouseComplete(
+    $data = [
+        'houseguid' => null,
+        'housenum' => null,
+        'street_id' => null,
+        'offset' => 0,
+        'limit' => 50
+    ])
+    {
+        $addresses = [];
+        $addresses['items'] = self::getAddressByHouse($data);
+        $addresses['count_total'] = self::getCountAddressByHouse($data);
+        $addresses['offset'] = $data['offset'];
+
+        return $addresses;
+    }
+
+    public static function getCountAddressByHouse(
+    $data = [
+        'houseguid' => null,
+        'housenum' => null,
+        'street_id' => null,
+        'offset' => 0,
+        'limit' => 50,
+        'getCount' => true
+    ])
+    {
+        $data['getCount'] = true;
+
+        $addressesCount = self::getAddressByHouse($data);
+
+        return $addressesCount;
+    }
+
+    public static function getAddressByHouse(
+    $data = [
+        'houseguid' => null,
+        'housenum' => null,
+        'street_id' => null,
+        'offset' => 0,
+        'limit' => 50,
+        'getCount' => false
+    ]
+    )
+    {
+        $where = [];
+
+        if (!empty($data['houseguid'])) {
+            $where['fias_house.houseguid'] = $data['houseguid'];
+        } else if (!empty($data['housenum'])) {
+            $where['fias_house.housenum'] = $data['housenum'];
+            $where['address.aoguid'] = $data['street_id'];
+        }
+
+        /* @var ActiveQuery $query */
+        $query = FiasHouse::find()->
+        indexBy('houseguid')->
+        joinWith(['addrobj AS address' => function($query) {
+                $query->andWhere(['address.currstatus' => 0]);
+            },
+            'addrobj.parent AS parent' => function($query) {
+                $query->andWhere(['parent.currstatus' => 0]);
+            },
+            'addrobj.parent.parent AS parent2' => function($query) {
+                $query->andWhere(['parent2.currstatus' => 0]);
+            }])->
+        where($where)->
+        andWhere(['>', 'fias_house.enddate', 'NOW()'])->
+        andWhere(['fias_house.strstatus' => 0]);
+
+        if (!empty($data['getCount'])) {
+            $housesCount = $query->count();
+
+            return $housesCount;
+        }
+
+        if (!empty($data['limit'])) {
+            $query = $query->offset($data['offset'])->limit($data['limit']);
+        }
+
+        $query = $query->orderBy([
+            'parent2.formalname' => SORT_ASC,
+            'parent.formalname' => SORT_ASC,
+            'address.formalname' => SORT_ASC,
+            "(substring(fias_house.housenum, '^[0-9]+'))::int,substring(fias_house.housenum, '[^0-9_].*$')" => SORT_ASC
+        ]);
+
+        /* @var FiasAddrobj[] $children */
+        $houses = $query->asArray()->all();
+
+        return $houses;
+    }
+
     public static function getRegions($formalname = null)
     {
         $data = ['aolevel' => 1, 'formalname' => $formalname];
@@ -206,7 +572,9 @@ class FiasAddrobj extends ActiveRecord
     $data = [
         'aolevel' => 1,
         'formalname' => null,
-        'getCount' => false
+        'getCount' => false,
+        'limit' => null,
+        'offset' => 0
     ])
     {
         $where = [];

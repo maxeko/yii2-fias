@@ -14,6 +14,9 @@ class Module extends \yii\base\Module implements \yii\base\BootstrapInterface
 {
     /* @var string $db name of the component to use for database access */
     public $db = 'db';
+    
+    public $fiasHouseTable = 'fias_house';
+    public $fiasAddrobjTable = 'fias_addrobj';
 
     /**
      * @var string NameBuilder component ID, set to false if not needed
