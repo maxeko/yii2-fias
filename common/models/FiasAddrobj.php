@@ -524,7 +524,7 @@ class FiasAddrobj extends ActiveRecord
 
         if (!empty($formalname)) {
             $query->andWhere([
-                'ilike', 'formalname', $formalname
+                'like', 'upper(formalname)', mb_convert_case($formalname, MB_CASE_TITLE, "UTF-8")
             ]);
         }
 
@@ -558,7 +558,7 @@ class FiasAddrobj extends ActiveRecord
 
         if (!empty($formalname)) {
             $query->andWhere([
-                'ilike', 'housenum', $formalname
+                'like', 'upper(housenum)', mb_convert_case($formalname, MB_CASE_TITLE, "UTF-8")
             ]);
         }
 
@@ -591,7 +591,7 @@ class FiasAddrobj extends ActiveRecord
         where($where);
 
         if (!empty($data['formalname'])) {
-            $addressesQuery = $addressesQuery->andWhere(['ilike', 'formalname', $data['formalname']]);
+            $addressesQuery = $addressesQuery->andWhere(['like', 'upper(formalname)', mb_convert_case($data['formalname'], MB_CASE_TITLE, "UTF-8")]);
         }
 
         $addresses = [];
