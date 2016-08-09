@@ -550,13 +550,12 @@ class FiasAddrobj extends ActiveRecord
                 fias_house.housenum AS title,
                 fias_house.houseguid AS id
         ")->
-        orderBy(['buildnum' => SORT_ASC])->
+        orderBy(["(substring(fias_house.housenum, '^[0-9]+'))::int,substring(fias_house.housenum, '[^0-9_].*$')" => SORT_ASC])->
         andWhere(['>', 'enddate', 'NOW()'])->
         andWhere(['strstatus' => 0])->
-        limit($count)->
-        distinct();
+        limit($count);
 
-        if (!empty($formalname)) {
+        if (!empty($formalname) && $formalname != '*') {
             $query->andWhere([
                 'like', 'upper(housenum)', mb_convert_case($formalname, MB_CASE_TITLE, "UTF-8")
             ]);
