@@ -387,7 +387,7 @@ class FiasAddrobj extends ActiveRecord
             'parent2.formalname' => SORT_ASC,
             'parent.formalname' => SORT_ASC,
             'address.formalname' => SORT_ASC,
-            "(substring(fias_house.housenum, '^[0-9]+'))::int,substring(fias_house.housenum, '[^0-9_].*$')" => SORT_ASC
+            "(substring(fias_house.housenum1, '^[0-9]+'))::int,substring(fias_house.housenum, '[^0-9_].*$')" => SORT_ASC
         ]);
 
         if (!empty($data['limit'])) {
