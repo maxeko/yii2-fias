@@ -28,7 +28,7 @@ class MigrateController extends Controller
             'php ' . \Yii::$app->basePath . '/yii migrate/down' .
             ' --interactive=0' .
             ' --migrationPath=' . Module::getInstance()->basePath . '/console/migrations' .
-            ' --db=' . Module::getInstance()->db . ' 19',
+            ' --db=' . Module::getInstance()->db . ' 100',
             $output
         );
 
