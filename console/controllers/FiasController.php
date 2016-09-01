@@ -88,6 +88,8 @@ class FiasController extends \yii\console\Controller
         $this->stdout("Записей в DBF файле '$filename' : $rowsCount\n");
 
         $j = 0;
+        $insertRows = [];
+        
         for ($i = 1; $i <= $rowsCount; $i++)
         {
 
@@ -98,26 +100,43 @@ class FiasController extends \yii\console\Controller
                 continue;
             }
 
-            if ($j == 0)
-            {
-                $transaction = Yii::$app->db->beginTransaction();
-            }
-
             $model = new $modelClass;
+            
+            
+            
+            $insertRow = [];
+            
             foreach($row as $key => $value)
             {
                 if ($key == 'deleted') continue;
                 $key = strtolower($key);
-                $model->{$key} = trim(mb_convert_encoding($value, 'UTF-8', 'CP866'));
+                
+                if (property_exists($model, $key)) {
+                    $insertRow[$key] = trim(mb_convert_encoding($value, 'UTF-8', 'CP866'));
+                }
             }
-            $model->save();
+            
+            $insertRows[] = $insertRow;
+            
             $j++;
+            
             if ($j == 1000)
             {
+                $transaction = Yii::$app->db->beginTransaction();
+                Yii::$app->db->createCommand()->insert($modelClass::tableName(), $insertRows)->execute();
+                $insertRows = [];
+                
                 $transaction->commit();
                 $j = 0;
                 $this->stdout("Обработано $i из $rowsCount записей\n");
             }
+        }
+        
+        if (!empty($insertRows)) {
+            $transaction = Yii::$app->db->beginTransaction();
+            Yii::$app->db->createCommand()->insert($modelClass::tableName(), $insertRows)->execute();
+            $insertRows = [];
+            $transaction->commit();
         }
 
         if ($j != 0)
