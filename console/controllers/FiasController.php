@@ -144,10 +144,10 @@ class FiasController extends \yii\console\Controller
             $transaction->commit();
         }
 
-        if ($j != 0)
+        /*if ($j != 0)
         {
             $transaction->commit();
-        }
+        }*/
         return 0;
     }
 }
