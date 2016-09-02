@@ -24,6 +24,8 @@ use ejen\fias\common\models\FiasOperstat;
 use ejen\fias\common\models\FiasStrstat;
 use ejen\fias\common\models\FiasSocrbase;
 
+use ejen\fias\Module;
+
 class FiasController extends \yii\console\Controller
 {
     public $region;
@@ -100,19 +102,21 @@ class FiasController extends \yii\console\Controller
                 continue;
             }
 
+            /* @var \yii\db\ActiveRecord $model */
             $model = new $modelClass;
             
-            
-            
             $insertRow = [];
-            
+            $columns = [];
             foreach($row as $key => $value)
             {
+                
                 if ($key == 'deleted') continue;
                 $key = strtolower($key);
                 
-                if (property_exists($model, $key)) {
-                    $insertRow[$key] = trim(mb_convert_encoding($value, 'UTF-8', 'CP866'));
+                
+                if ($model->hasAttribute($key)) {
+                    $columns[] = $key;
+                    $insertRow[] = trim(mb_convert_encoding($value, 'UTF-8', 'CP866'));
                 }
             }
             
@@ -122,8 +126,9 @@ class FiasController extends \yii\console\Controller
             
             if ($j == 1000)
             {
-                $transaction = Yii::$app->db->beginTransaction();
-                Yii::$app->db->createCommand()->insert($modelClass::tableName(), $insertRows)->execute();
+                $transaction = Module::getInstance()->getDb()->beginTransaction();
+                //var_dump($insertRows); die();
+                Module::getInstance()->getDb()->createCommand()->batchInsert($modelClass::tableName(), $columns, $insertRows)->execute();
                 $insertRows = [];
                 
                 $transaction->commit();
@@ -133,8 +138,8 @@ class FiasController extends \yii\console\Controller
         }
         
         if (!empty($insertRows)) {
-            $transaction = Yii::$app->db->beginTransaction();
-            Yii::$app->db->createCommand()->insert($modelClass::tableName(), $insertRows)->execute();
+            $transaction = Module::getInstance()->getDb()->beginTransaction();
+            Module::getInstance()->getDb()->createCommand()->batchInsert($modelClass::tableName(), $columns, $insertRows)->execute();
             $insertRows = [];
             $transaction->commit();
         }
