@@ -2,8 +2,6 @@
 
 namespace ejen\fias\console\controllers;
 
-use Yii;
-
 use ejen\fias\common\models\FiasActstat;
 use ejen\fias\common\models\FiasAddrobj;
 use ejen\fias\common\models\FiasCenterst;
@@ -25,10 +23,13 @@ use ejen\fias\common\models\FiasStrstat;
 use ejen\fias\common\models\FiasSocrbase;
 
 use ejen\fias\Module;
+use yii\console\Controller;
 
-class FiasController extends \yii\console\Controller
+class FiasController extends Controller
 {
     public $region;
+
+    public $versions;
 
     public function options($actionID)
     {
@@ -37,7 +38,172 @@ class FiasController extends \yii\console\Controller
         ];
     }
 
-    public function actionImportDbf($filename, $region = false)
+    private function loadVersions()
+    {
+        $client = new \SoapClient('http://fias.nalog.ru/WebServices/Public/DownloadService.asmx?WSDL');
+        $this->versions = $client->GetAllDownloadFileInfo();
+    }
+
+    public function actionImportDbfFolder($path)
+    {
+        $path = realpath($path);
+
+        if (!$path) {
+            $this->stderr("Неправильный путь\n");
+            return 1;
+        }
+
+        if (!is_readable($path)) {
+            $this->stderr("Нет прав на чтение директории\n");
+            return 1;
+        }
+
+        $files = scandir($path);
+        $len = count($files);
+
+        if (2 >= $len) {
+            $this->stderr("Директория пуста\n");
+            return 1;
+        }
+
+        for ($i = 2; $i < $len; $i++) {
+            $filename = "$path/${files[$i]}";
+
+            if (!strpos(strtolower($files[$i]), '.dbf')) {
+                $this->stdout("Файл \"$filename\" пропущен\n");
+                continue;
+            }
+
+            $this->actionImportDbf($filename);
+        }
+
+        return 0;
+    }
+
+    public function actionImportDbfFile($filename)
+    {
+        $db = @dbase_open($filename, 0);
+
+        if (!$db)
+        {
+            $this->stderr("Не удалось открыть DBF файл: '$filename'\n");
+            return 1;
+        }
+
+        $classMap = [
+            '/^.*DADDROBJ\.DBF$/'   => FiasDaddrobj::className(),
+            '/^.*ADDROBJ\.DBF$/'    => FiasAddrobj::className(),
+            '/^.*LANDMARK\.DBF$/'   => FiasLandmark::className(),
+            '/^.*DHOUSE\.DBF$/'     => FiasDhouse::className(),
+            '/^.*HOUSE\d\d\.DBF$/'  => FiasHouse::className(),
+            '/^.*DHOUSINT\.DBF$/'   => FiasDhousint::className(),
+            '/^.*HOUSEINT\.DBF$/'   => FiasHouseint::className(),
+            '/^.*DLANDMRK\.DBF$/'   => FiasDlandmrk::className(),
+            '/^.*DNORDOC\.DBF$/'    => FiasDnordoc::className(),
+            '/^.*NORDOC\d\d\.DBF$/' => FiasNordoc::className(),
+            '/^.*ACTSTAT\.DBF$/'    => FiasActstat::className(),
+            '/^.*CENTERST\.DBF$/'   => FiasCenterst::className(),
+            '/^.*ESTSTAT\.DBF$/'    => FiasEststat::className(),
+            '/^.*HSTSTAT\.DBF$/'    => FiasHststat::className(),
+            '/^.*OPERSTAT\.DBF$/'   => FiasOperstat::className(),
+            '/^.*INTVSTAT\.DBF$/'   => FiasIntvstat::className(),
+            '/^.*STRSTAT\.DBF$/'    => FiasStrstat::className(),
+            '/^.*CURENTST\.DBF$/'   => FiasCurentst::className(),
+            '/^.*SOCRBASE\.DBF$/'   => FiasSocrbase::className(),
+        ];
+
+        /* @var \yii\db\ActiveRecord $model */
+        $modelClass = null;
+        foreach($classMap as $pattern => $className)
+        {
+            if (preg_match($pattern, $filename))
+            {
+                $modelClass = $className;
+                break;
+            }
+        }
+
+        if ($modelClass === null)
+        {
+            $this->stderr("Не поддерживаемый DBF файл: '$filename'\n");
+            return 1;
+        }
+
+        $batchSize = 1000;
+        $rowsCount = dbase_numrecords($db);
+        $this->stdout("Записей в DBF файле '$filename' : $rowsCount\n");
+
+        /* @var \yii\db\ActiveRecord $model */
+        $model = new $modelClass;
+
+        $columns = [];
+        $insertRows = [];
+        $primariesValues = [];
+
+        $primaries = $model->getPrimaryKey(true);
+
+        if (!count($primaries))
+        {
+            $this->stdout("В структуре таблицы \"{$modelClass::tableName()}\" не определены первичные ключи\n");
+            return 0;
+        }
+
+        $primaries = array_keys($primaries);
+
+        $deleted = 0;
+        $inserted = 0;
+
+        for ($i = 0; $i < $rowsCount; $i++)
+        {
+            $row = dbase_get_record_with_names($db, $i + 1);
+
+            $insertRow = [];
+
+            foreach ($row as $column => $value)
+            {
+                if ($column == 'delete')
+                {
+                    continue;
+                }
+
+                $column = strtolower($column);
+
+                if (!$model->hasAttribute($column))
+                {
+                    continue;
+                }
+
+                $value = mb_convert_encoding($value, 'UTF-8', 'CP866');
+
+                if ($i == 0)
+                {
+                    $columns[] = strtolower($column);
+                }
+
+                if (in_array($column, $primaries)) {
+                    $primariesValues[$column][] = $value;
+                }
+
+                $insertRow[] = $value;
+            }
+
+            $insertRows[] = $insertRow;
+
+            if (($i && $i % $batchSize == 0) || $i == $rowsCount - 1) {
+                $deleted+= $model->getDb()->createCommand()->delete($modelClass::tableName(), $primariesValues)->execute();
+                $inserted+= $model->getDb()->createCommand()->batchInsert($modelClass::tableName(), $columns, $insertRows)->execute();
+                $primariesValues = [];
+                $insertRows = [];
+                $this->stdout("Обработано " . ($i + 1) . " из $rowsCount записей\r");
+            }
+        }
+
+        $this->stdout("\nОбновлено $deleted, добавлено " . ($inserted - $deleted) . "\n");
+
+        return 0;
+    }
+
+    public function actionImportDbf($filename)
     {
         $db = @dbase_open($filename, 0);
         if (!$db)
