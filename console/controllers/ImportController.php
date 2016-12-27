@@ -34,6 +34,10 @@ class ImportController extends Controller
 
     private $classMap = [];
 
+    private $gisColumnMap = [];
+
+    private $gisCopies = [];
+
     function __construct($id, Module $module, array $config = [])
     {
         $this->classMap = [
@@ -56,6 +60,28 @@ class ImportController extends Controller
             'dhousint'   => FiasDhousint::className(),
             'dlandmrk'   => FiasDlandmrk::className(),
             'dnordoc'    => FiasDnordoc::className()];
+
+        $this->gisColumnMap = [
+            FiasAddrobj::tableName() => [
+                'aouid' => 'aoid',
+                'start_dtae' => 'startdate',
+                'fias_update_date' => 'updatedate',
+                'start_date' => 'startdate',
+                'end_date' => 'enddate'],
+            FiasHouse::tableName() => [
+                'fias_update_date' => 'updatedate',
+                'start_date' => 'startdate',
+                'end_date' => 'enddate']
+        ];
+
+        $this->gisCopies = [
+            FiasAddrobj::tableName() => [
+                'fias_addrobjid' => 'aoid',
+                'fias_addrobjguid' => 'aoguid'],
+            FiasHouse::tableName() => [
+                'fias_houseid' => 'houseid',
+                'fias_houseguid' => 'houseguid']
+        ];
 
         parent::__construct($id, $module, $config);
     }
@@ -384,6 +410,8 @@ class ImportController extends Controller
 
             $primaries = $model->getPrimaryKey(true);
             $primariesValues = [];
+            $copyIndexes = [];
+            $copies = [];
 
             if (!count($primaries))
             {
@@ -401,6 +429,7 @@ class ImportController extends Controller
 
             $deleted = 0;
             $inserted = 0;
+            $marked = 0;
 
             $fileSize = filesize($filename);
 
@@ -410,9 +439,16 @@ class ImportController extends Controller
                 {
                     $columns = [];
 
-                    foreach ($data as $item)
+                    foreach ($data as $index => $item)
                     {
-                        $columns[] = $model->hasAttribute($item) ? $item : "";
+                        if (!empty($this->gisCopies[$model::tableName()][$item]))
+                        {
+                            $copyIndexes[$index] = $this->gisCopies[$model::tableName()][$item];
+                        }
+
+                        $item = empty($this->gisColumnMap[$model::tableName()][$item]) ?
+                            $item : $this->gisColumnMap[$model::tableName()][$item];
+                        $columns[] = $item && $model->hasAttribute($item) ? $item : "";
                     }
 
                     // extra column
@@ -435,6 +471,8 @@ class ImportController extends Controller
                         {
                             $primariesValues[$column][] = $value;
                         }
+                    } else if (!empty($copyIndexes[$index])) {
+                        $copies[$copyIndexes[$index]][] = $value;
                     }
                 }
 
@@ -452,15 +490,17 @@ class ImportController extends Controller
                     }
 
                     $inserted += $db->createCommand()->batchInsert($model::tableName(), array_filter($columns), $rows)->execute();
+                    $marked += $db->createCommand()->update($model::tableName(), [ 'copy' => 'TRUE' ], $copies)->execute();
 
                     $rows = [];
                     $primariesValues = [];
+                    $copies = [];
 
                     $this->stdout("Обработано {$rowsCount} записей\r");
                 }
             }
 
-            $this->stdout("\nОбновлено $deleted, добавлено " . ($inserted - $deleted) . "\n");
+            $this->stdout("\nОбновлено $deleted, добавлено " . ($inserted - $deleted) . ", помечено копией {$marked}\n");
 
             fclose($fp);
         }
