@@ -547,7 +547,11 @@ class FiasAddrobj extends ActiveRecord
         /* @var ActiveQuery $query */
         $query = $parentAddrobj->getHouses()->
         select("*,
-                fias_house.housenum AS title,
+                (
+                    fias_house.housenum || 
+                    CASE buildnum WHEN '' THEN '' ELSE format(' корп. %s', buildnum) END ||
+                    CASE strucnum WHEN '' THEN '' ELSE format(' стр. %s', strucnum) END
+                ) AS \"title\",
                 fias_house.houseguid AS id
         ")->
         orderBy(["(substring(fias_house.housenum, '^[0-9]+'))::int,substring(fias_house.housenum, '[^0-9_].*$')" => SORT_ASC])->
