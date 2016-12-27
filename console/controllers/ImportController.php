@@ -24,59 +24,44 @@ use ejen\fias\common\models\FiasSocrbase;
 
 use ejen\fias\Module;
 use yii\console\Controller;
+use yii\db\ActiveRecord;
 
 class ImportController extends Controller
 {
-    public $region;
+    private $loadBuffer = 2.684e+8; // 256 Mib
 
-    public $versions;
+    private $batchSize = 1000;
 
-    public $type = 0; // тип импорта 1 - ФИАС, 2 - ГИС
+    private $classMap = [];
 
-    const TYPE_FIAS = 1;
-    const TYPE_GIS = 2;
-
-    public function options($actionID)
+    function __construct($id, Module $module, array $config = [])
     {
-        return [
-            'region',
-        ];
+        $this->classMap = [
+            'actstat'    => FiasActstat::className(),
+            'addrobj'    => FiasAddrobj::className(),
+            'centerst'   => FiasCenterst::className(),
+            'curentst'   => FiasCurentst::className(),
+            'eststat'    => FiasEststat::className(),
+            'house'      => FiasHouse::className(),
+            'houseint'   => FiasHouseint::className(),
+            'hststat'    => FiasHststat::className(),
+            'intvstat'   => FiasIntvstat::className(),
+            'landmark'   => FiasLandmark::className(),
+            'nordoc'     => FiasNordoc::className(),
+            'operstat'   => FiasOperstat::className(),
+            'socrbase'   => FiasSocrbase::className(),
+            'strstat'    => FiasStrstat::className(),
+            'daddrobj'   => FiasDaddrobj::className(),
+            'dhouse'     => FiasDhouse::className(),
+            'dhousint'   => FiasDhousint::className(),
+            'dlandmrk'   => FiasDlandmrk::className(),
+            'dnordoc'    => FiasDnordoc::className()];
+
+        parent::__construct($id, $module, $config);
     }
 
-    private function loadVersions()
+    public function actionFias()
     {
-        $client = new \SoapClient('http://fias.nalog.ru/WebServices/Public/DownloadService.asmx?WSDL');
-        $result = $client->GetAllDownloadFileInfo();
-
-        if ($result) {
-            $this->versions = $result->GetAllDownloadFileInfoResult->DownloadFileInfo;
-            $this->stdout("Версий загружено: " . (count($this->versions)) . "\n");
-        }
-    }
-
-    private function getVersionFromDate(\DateTime $date)
-    {
-        if (!$this->versions) {
-            $this->stdout("Загрузка версий ФИАС\n");
-            $this->loadVersions();
-        }
-
-        $list = [];
-
-        foreach ($this->versions as $version) {
-            $versionDate = new \DateTime(substr($version->TextVersion, -10));
-            if ($versionDate > $date) {
-                $list[] = $version;
-            }
-        }
-
-        return $list;
-    }
-
-    public function actionUpdateFias()
-    {
-        $this->type = ImportController::TYPE_FIAS;
-
         $db = Module::getInstance()->getDb();
 
         $result = $db->createCommand("SELECT * FROM system WHERE type = 'FIAS' ORDER BY date ASC LIMIT 1")->query();
@@ -87,7 +72,19 @@ class ImportController extends Controller
             return 0;
         }
 
-        $versions = $this->getVersionFromDate(new \DateTime($rows[0]['version']));
+        // дата последней версии
+        $currentDate = new \DateTime($rows[0]['version']);
+
+        $this->stdout("Загрузка версий ФИАС\n");
+        $client = new \SoapClient('http://fias.nalog.ru/WebServices/Public/DownloadService.asmx?WSDL');
+        $result = $client->GetAllDownloadFileInfo();
+
+        if (!$result) {
+            $this->stderr("Не удалось загрузить версии\n");
+            return 1;
+        }
+
+        $versions = $result->GetAllDownloadFileInfoResult->DownloadFileInfo;
         $len = count($versions);
 
         if (!$len) {
@@ -95,11 +92,377 @@ class ImportController extends Controller
             return 0;
         }
 
-        $this->stdout("Новых версий: {$len}\n");
+        $this->stdout("Версий загружено: {$len}\n");
 
         foreach ($versions as $version) {
-            $this->stdout("Импорт версии #{$version->VersionId} \"{$version->TextVersion}\" ($version->FiasDeltaDbfUrl)\n");
-            $this->actionFromUrl($version->FiasDeltaDbfUrl);
+            $versionDate = new \DateTime(substr($version->TextVersion, -10));
+            if ($versionDate > $currentDate) {
+                $this->stdout("Импорт версии #{$version->VersionId} \"{$version->TextVersion}\" ($version->FiasDeltaDbfUrl)\n");
+
+                $filename = basename($version->FiasDeltaDbfUrl);
+                $path = "/tmp/{$filename}";
+
+                $headers = get_headers($version->FiasDeltaDbfUrl, 1);
+
+                if ($headers[0] != "HTTP/1.1 200 OK") {
+                    $this->stderr("Ошибка загрузки файла (" . $headers[0] . ")\n");
+                    return 1;
+                }
+
+                $length = (int) $headers['Content-Length'];
+                $data = "";
+                $loaded = 0;
+
+                $fp = fopen($version->FiasDeltaDbfUrl, 'rb');
+
+                if (!$fp) {
+                    $this->stderr("Ошибка загрузки файла\n");
+                    return 1;
+                }
+
+                $dfp = fopen($path, "wb");
+
+                if (!$dfp) {
+                    $this->stderr("Ошибка создания локального файла");
+                    return 1;
+                }
+
+                $this->stdout("Загрузка файла...\r");
+
+                while (!feof($fp)) {
+                    $part = fread($fp, 1000);
+                    $data .= $part;
+                    $loaded += strlen($part);
+
+                    if (strlen($data) >= $this->loadBuffer || feof($fp)) {
+                        fwrite($dfp, $data, strlen($data));
+                        $data = "";
+                    }
+
+                    $this->stdout("Загружено " . round($loaded / ($length / 100), 2) . "%  \r");
+                }
+
+                fclose($fp);
+                fclose($dfp);
+
+                $this->stdout("Загружено " . round(($loaded / 1048576), 2) . " Мб\n");
+
+                $destination = "{$path}_extracted";
+                $command = "unrar e -y {$path} *.DBF $destination/";
+
+                $this->stdout("Извлечение файлов в {$destination}\n");
+
+                exec($command, $output, $return);
+
+                if ($return) {
+                    $this->stderr("Ошибка извлечения\n");
+                    $this->stderr("{$command}\n");
+                    $this->stderr(join("\n", $output));
+                    return 1;
+                }
+
+                $files = scandir($destination);
+                $len = count($files);
+
+                if (2 >= $len) {
+                    $this->stderr("Директория пуста\n");
+                    return 1;
+                }
+
+                for ($fileIndex = 2; $fileIndex < $len; $fileIndex++) {
+                    $filename = "$destination/${files[$fileIndex]}";
+
+                    $this->stdout("\n{$filename}\n");
+
+                    if (!strpos(strtolower($files[$fileIndex]), '.dbf')) {
+                        $this->stdout("Неправильное расширение\n");
+                        continue;
+                    }
+
+                    $db = @dbase_open($filename, 0);
+
+                    if (!$db) {
+                        $this->stderr("Не удалось открыть\n");
+                        continue;
+                    }
+
+                    $classMap = [
+                        '/^.*DADDROBJ\.DBF$/' => FiasDaddrobj::className(),
+                        '/^.*ADDROBJ\.DBF$/' => FiasAddrobj::className(),
+                        '/^.*LANDMARK\.DBF$/' => FiasLandmark::className(),
+                        '/^.*DHOUSE\.DBF$/' => FiasDhouse::className(),
+                        '/^.*HOUSE\d\d\.DBF$/' => FiasHouse::className(),
+                        '/^.*DHOUSINT\.DBF$/' => FiasDhousint::className(),
+                        '/^.*HOUSEINT\.DBF$/' => FiasHouseint::className(),
+                        '/^.*DLANDMRK\.DBF$/' => FiasDlandmrk::className(),
+                        '/^.*DNORDOC\.DBF$/' => FiasDnordoc::className(),
+                        '/^.*NORDOC\d\d\.DBF$/' => FiasNordoc::className(),
+                        '/^.*ACTSTAT\.DBF$/' => FiasActstat::className(),
+                        '/^.*CENTERST\.DBF$/' => FiasCenterst::className(),
+                        '/^.*ESTSTAT\.DBF$/' => FiasEststat::className(),
+                        '/^.*HSTSTAT\.DBF$/' => FiasHststat::className(),
+                        '/^.*OPERSTAT\.DBF$/' => FiasOperstat::className(),
+                        '/^.*INTVSTAT\.DBF$/' => FiasIntvstat::className(),
+                        '/^.*STRSTAT\.DBF$/' => FiasStrstat::className(),
+                        '/^.*CURENTST\.DBF$/' => FiasCurentst::className(),
+                        '/^.*SOCRBASE\.DBF$/' => FiasSocrbase::className(),
+                    ];
+
+                    /* @var \yii\db\ActiveRecord $model */
+                    $modelClass = null;
+                    foreach ($classMap as $pattern => $className) {
+                        if (preg_match($pattern, $filename)) {
+                            $modelClass = $className;
+                            break;
+                        }
+                    }
+
+                    if ($modelClass === null) {
+                        $this->stderr("Обработчик не определён\n");
+                        continue;
+                    }
+
+                    $this->batchSize = 1000;
+                    $rowsCount = dbase_numrecords($db);
+                    $this->stdout("Колчичество записей: {$rowsCount}\n");
+
+                    /* @var \yii\db\ActiveRecord $model */
+                    $model = new $modelClass;
+
+                    $columns = [];
+                    $insertRows = [];
+                    $primariesValues = [];
+
+                    $primaries = $model->getPrimaryKey(true);
+
+                    if (!count($primaries)) {
+                        $this->stdout("В структуре таблицы \"{$modelClass::tableName()}\" не определены первичные ключи\n");
+                        continue;
+                    }
+
+                    $primaries = array_keys($primaries);
+
+                    $deleted = 0;
+                    $inserted = 0;
+
+                    for ($rowIndex = 0; $rowIndex < $rowsCount; $rowIndex++) {
+                        $row = dbase_get_record_with_names($db, $rowIndex + 1);
+
+                        $insertRow = [];
+
+                        foreach ($row as $column => $value) {
+                            if ($column == 'delete') {
+                                continue;
+                            }
+
+                            $column = strtolower($column);
+
+                            if (!$model->hasAttribute($column)) {
+                                continue;
+                            }
+
+                            $value = mb_convert_encoding($value, 'UTF-8', 'CP866');
+
+                            if ($rowIndex == 0) {
+                                $columns[] = strtolower($column);
+                            }
+
+                            if (in_array($column, $primaries)) {
+                                $primariesValues[$column][] = $value;
+                            }
+
+                            $insertRow[] = $value;
+                        }
+
+                        $insertRows[] = $insertRow;
+
+                        if (($rowIndex && ($rowIndex + 1) % $this->batchSize == 0) || $rowIndex == $rowsCount - 1) {
+                            $deleted += $model->getDb()->createCommand()->delete($modelClass::tableName(), $primariesValues)->execute();
+                            $inserted += $model->getDb()->createCommand()->batchInsert($modelClass::tableName(), $columns, $insertRows)->execute();
+                            $primariesValues = [];
+                            $insertRows = [];
+                            $this->stdout("Обработано " . ($rowIndex + 1) . " из $rowsCount записей\r");
+                        }
+                    }
+
+                    $this->stdout("\nОбновлено $deleted, добавлено " . ($inserted - $deleted) . "\n");
+                }
+            }
+        }
+
+        return 0;
+    }
+
+    public function actionGis($filename)
+    {
+        $destination = "{$filename}_extracted";
+        $zip = new \ZipArchive();
+        $status = $zip->open($filename);
+        if ($status !== true)
+        {
+            $this->stderr("Не удалось открыть архив \"{$filename}\"\n");
+            $this->stderr($status);
+            return 1;
+        }
+
+        $this->stdout("Извлечение файлов в {$destination}\n");
+        $status = $zip->extractTo($destination);
+
+        if (!$status)
+        {
+            $this->stderr("Ошибка извлечения файлов\n");
+            return 1;
+        }
+
+        $zip->close();
+
+        $files = array_slice(scandir($destination), 2);
+        $len = count($files);
+
+        $this->stdout("Извлечено {$len} архивов\n");
+
+        for ($fileIndex = 0; $fileIndex < $len; $fileIndex++)
+        {
+            if (substr(strtolower($files[$fileIndex]), -4) != ".zip")
+            {
+                continue;
+            }
+
+            $this->stdout("{$destination}/{$files[$fileIndex]}\n");
+
+            $zip = new \ZipArchive();
+
+            if (!$zip->open("{$destination}/{$files[$fileIndex]}"))
+            {
+                $this->stderr("Не удалось открыть архив\n");
+                continue;
+            }
+
+            $this->stdout("Извлечение в {$destination}\n");
+            $status = $zip->extractTo($destination);
+
+            if (!$status)
+            {
+                $this->stderr("Ошибка извлечения файлов\n");
+                continue;
+            }
+        }
+
+        $files = scandir($destination);
+        $len = count($files);
+
+        for ($fileIndex = 2; $fileIndex < $len; $fileIndex++)
+        {
+            if (substr(strtolower($files[$fileIndex]), -4) != ".csv")
+            {
+                continue;
+            }
+
+            $filename = "{$destination}/{$files[$fileIndex]}";
+            $modelClass = null;
+
+            $this->stdout("\n{$filename}\n");
+
+            foreach ($this->classMap as $name => $className)
+            {
+                if (strpos(strtolower($files[$fileIndex]), $name) !== false)
+                {
+                    $modelClass = $className;
+                    break;
+                }
+            }
+
+            if (!$modelClass)
+            {
+                $this->stderr("Обработчик не определён\n");
+                continue;
+            }
+
+            /* @var ActiveRecord $model */
+            $model = new $modelClass;
+            $db = $model->getDb();
+
+            $primaries = $model->getPrimaryKey(true);
+            $primariesValues = [];
+
+            if (!count($primaries))
+            {
+                $this->stdout("В структуре таблицы \"{$model::tableName()}\" не определены первичные ключи\n");
+                continue;
+            }
+
+            $primaries = array_keys($primaries);
+
+            $fp = fopen($filename, "r");
+
+            $columns = null;
+            $rows = [];
+            $rowsCount = 0;
+
+            $deleted = 0;
+            $inserted = 0;
+
+            $fileSize = filesize($filename);
+
+            while (($data = fgetcsv($fp, 0, ";")) !== false)
+            {
+                if (!$columns)
+                {
+                    $columns = [];
+
+                    foreach ($data as $item)
+                    {
+                        $columns[] = $model->hasAttribute($item) ? $item : "";
+                    }
+
+                    // extra column
+                    $columns[] = "gisgkh";
+                    continue;
+                }
+
+                $row = [];
+
+                for ($index = 0; $index < count($data); $index++)
+                {
+                    $column = $columns[$index];
+                    $value = $data[$index];
+
+                    if ($column)
+                    {
+                        $row[] = $value;
+
+                        if (in_array($column, $primaries))
+                        {
+                            $primariesValues[$column][] = $value;
+                        }
+                    }
+                }
+
+                // data for extra column "gisgkh"
+                $row[] = 'TRUE';
+
+                $rows[] = $row;
+                $rowsCount++;
+
+                if ($rowsCount % $this->batchSize == 0 || feof($fp) || $fileSize == ftell($fp)) {
+
+                    if (count($primariesValues))
+                    {
+                        $deleted += $db->createCommand()->delete($model::tableName(), $primariesValues)->execute();
+                    }
+
+                    $inserted += $db->createCommand()->batchInsert($model::tableName(), array_filter($columns), $rows)->execute();
+
+                    $rows = [];
+                    $primariesValues = [];
+
+                    $this->stdout("Обработано {$rowsCount} записей\r");
+                }
+            }
+
+            $this->stdout("\nОбновлено $deleted, добавлено " . ($inserted - $deleted) . "\n");
+
+            fclose($fp);
         }
 
         return 0;
