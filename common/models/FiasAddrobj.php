@@ -6,7 +6,7 @@ use \yii\db\ActiveRecord;
 use \ejen\fias\Module;
 
 /**
- * Реестр образующих элементов
+ * Адресобразующий элемент
  *
  * @property string $aoguid Глобальный уникальный идентификатор адресного объекта
  * @property string $formalname Формализованное наименование
@@ -54,6 +54,9 @@ use \ejen\fias\Module;
  */
 class FiasAddrobj extends ActiveRecord
 {
+    const AOLEVEL_REGION    = 1;
+    const AOLEVEL_CITY      = 4;
+    const AOLEVEL_STREET    = 7;
 
     public static function getDb()
     {
@@ -514,7 +517,7 @@ class FiasAddrobj extends ActiveRecord
         /* @var ActiveQuery $query */
         $query = $parentAddrobj->getChildren()->
         select("*,
-                (fias_addrobj.shortname || ' ' || fias_addrobj.formalname) AS title,
+                (fias_addrobj.formalname || ' ' || fias_addrobj.shortname) AS title,
                 fias_addrobj.aoguid AS id
         ")->
         where(['currstatus' => 0])->
