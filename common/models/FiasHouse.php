@@ -6,7 +6,7 @@ use \yii\db\ActiveRecord;
 use \ejen\fias\Module;
 
 /**
- * Сведения по отдельным зданиям, сооружениям
+ * Объект адресации
  *
  * @property string $postalcode Почтовый индекс
  * @property string $regioncode Код региона
@@ -17,8 +17,9 @@ use \ejen\fias\Module;
  * @property string $oktmo ОКTMO
  * @property string $updatedate Дата время внесения (обновления) записи
  * @property string $housenum Номер дома
- * @property integer $eststatus Признак владения
+ * @property string $buildnum Корпус
  * @property string $strucnum Номер строения
+ * @property integer $eststatus Признак владения
  * @property integer $strstatus Признак строения
  * @property string $houseid Уникальный идентификатор записи дома
  * @property string $houseguid Глобальный уникальный идентификатор дома
@@ -35,6 +36,13 @@ use \ejen\fias\Module;
  */
 class FiasHouse extends ActiveRecord
 {
+    /* *
+     * ActiveRecord
+     ***************/
+
+    /**
+     * @inheritdoc
+     */
     public static function getDb()
     {
         $module = Module::getInstance();
@@ -42,13 +50,98 @@ class FiasHouse extends ActiveRecord
         return !empty($module) ? $module->getDb() : parent::getDb();
     }
 
+    /**
+     * @inheritdoc
+     */
     public static function tableName()
     {
         return '{{%fias_house}}';
     }
 
+    /**
+     * Перегрузка конструктора запросов с собственным поисковым классом
+     * @return FiasHouseQuery
+     */
+    public static function find()
+    {
+        return \Yii::createObject(FiasHouseQuery::className(), [get_called_class()]);
+    }
+
+    /* *
+     * ActiveRecord relations
+     *************************/
+
+    /**
+     * @return \yii\db\ActiveQuery
+     */
     public function getAddrobj()
     {
         return $this->hasOne(FiasAddrobj::className(), ['aoguid' => 'aoguid']);
+    }
+
+    /* *
+     * Public helpers
+     ****************/
+
+    /**
+     * Получить полную строку с литерами (дом, корп. .., стр. ..)
+     * @return string
+     */
+    public function getName()
+    {
+        $parts = [
+            $this->housenum,
+            $this->buildnum ? "корп. {$this->buildnum}" : false,
+            $this->strucnum ? "стр. {$this->strucnum}" : false
+        ];
+        $parts = array_filter($parts);
+        return join(', ', $parts);
+    }
+
+    /**
+     * Получить улицу (адресообразующий элемент)
+     * @return FiasAddrobj|null
+     */
+    public function getStreet()
+    {
+        return $this->getAddrobjByLevel(FiasAddrobj::AOLEVEL_STREET);
+    }
+
+    /**
+     * Получить город (адресообразующий элемент)
+     * @return FiasAddrobj|null
+     */
+    public function getCity()
+    {
+        return $this->getAddrobjByLevel(FiasAddrobj::AOLEVEL_CITY);
+    }
+
+    /**
+     * Получить регион (адресообразующий элемент)
+     * @return FiasAddrobj|null
+     */
+    public function getRegion()
+    {
+        return $this->getAddrobjByLevel(FiasAddrobj::AOLEVEL_REGION);
+    }
+
+    /* *
+     * Private helpers
+     ******************/
+
+    /**
+     * Получить адресообразующийэлемент заданного уровня
+     * @param integer|null $aolevel
+     * @return FiasAddrobj|null
+     */
+    private function getAddrobjByLevel($aolevel = null)
+    {
+        $addrobj = $this->addrobj;
+
+        while ($addrobj && $addrobj->aolevel != $aolevel) {
+            $addrobj = $addrobj->parent;
+        }
+
+        return $addrobj;
     }
 }
