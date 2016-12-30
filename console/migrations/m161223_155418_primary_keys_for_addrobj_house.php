@@ -6,7 +6,6 @@ use ejen\fias\common\models\FiasAddrobj;
 
 class m161223_155418_primary_keys_for_addrobj_house extends Migration
 {
-
     public function init()
     {
         $module = ejen\fias\Module::getInstance();
@@ -20,14 +19,14 @@ class m161223_155418_primary_keys_for_addrobj_house extends Migration
 
     public function up()
     {
-        $this->addPrimaryKey(FiasAddrobj::tableName() . "_aoid_pk", FiasAddrobj::tableName(), ['aoid']);
-        $this->addPrimaryKey(FiasHouse::tableName() . "_houseid_pk", FiasHouse::tableName(), ['houseid']);
+        $this->addPrimaryKey("fias_addrobj_aoid_pk", FiasAddrobj::tableName(), ['aoid']);
+        $this->addPrimaryKey("fias_house_houseid_pk", FiasHouse::tableName(), ['houseid']);
     }
 
     public function down()
     {
-        $this->dropPrimaryKey(FiasAddrobj::tableName() . "_aoid_pk", FiasAddrobj::tableName());
-        $this->dropPrimaryKey(FiasHouse::tableName() . "_houseid_pk", FiasHouse::tableName());
+        $this->dropPrimaryKey("fias_addrobj_aoid_pk", FiasAddrobj::tableName());
+        $this->dropPrimaryKey("fias_house_houseid_pk", FiasHouse::tableName());
     }
 
     /*
