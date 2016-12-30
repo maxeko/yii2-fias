@@ -23,8 +23,10 @@ use ejen\fias\common\models\FiasStrstat;
 use ejen\fias\common\models\FiasSocrbase;
 
 use ejen\fias\Module;
+use yii\BaseYii;
 use yii\console\Controller;
 use yii\db\ActiveRecord;
+use yii\helpers\BaseFileHelper;
 
 class ImportController extends Controller
 {
@@ -278,6 +280,7 @@ class ImportController extends Controller
                 $this->stdout("Извлечение файлов в {$destination}\n");
 
                 exec($command, $output, $return);
+                unlink($localFilePath);
 
                 if ($return) {
                     $this->stderr("Ошибка извлечения\n");
@@ -428,6 +431,8 @@ class ImportController extends Controller
 
                 $this->stdout("\nИмпорт версии завершен за {$ts->all} сек. (загрузка: {$ts->download} сек., распаковка: {$ts->extract} сек., импорт: {$ts->import} сек.) \n");
                 $this->stdout("Запись об импорте версии была добавлена в таблицу \"system\"\n");
+
+                BaseFileHelper::removeDirectory($destination);
             }
         }
 
@@ -464,8 +469,7 @@ class ImportController extends Controller
 
         if ($status !== true)
         {
-            $this->stderr("Не удалось открыть архив \"{$filename}\"\n");
-            $this->stderr($status);
+            $this->stderr("Не удалось открыть архив \"{$filename}\" (status code: {$status})\n");
             return 1;
         }
 
@@ -480,6 +484,8 @@ class ImportController extends Controller
         }
 
         $zip->close();
+
+        unlink($filename);
 
         $fullStatistic->extract = $this->ts('extract', 'init');
 
@@ -754,6 +760,29 @@ class ImportController extends Controller
         {
             $this->stdout("В таблицу {$name} было добавлено {$table->inserted} и обновлено {$table->updated} записей из {$table->rows} за {$table->time} сек. ");
             $this->stdout("Копией было помечено {$table->marked} записей. Пропущено {$table->skipped} записей\n");
+        }
+
+        BaseFileHelper::removeDirectory($extractDestinationFolder);
+
+        return 0;
+    }
+
+    /**
+     * Запуск обновления базы ФИАС и поиск обновлений ГИСа
+     */
+    public function actionCron()
+    {
+        $this->actionFias();
+
+        $runtime = BaseYii::getAlias("@runtime");
+        $files = scandir($runtime);
+
+        foreach ($files as $file)
+        {
+            if (substr($file, 0, 3) == "gis")
+            {
+                $this->actionGis("{$runtime}/$file");
+            }
         }
 
         return 0;
