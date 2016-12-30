@@ -21,9 +21,9 @@ class m160730_174140_add_gisgkh_field extends Migration
 
     public function up()
     {
-        $this->addColumn($this->module->fiasAddrobjTable, $this->gisGkhField, $this->boolean()->notNull()->defaultValue(false));
+        $this->addColumn($this->module->fiasAddrobjTable, $this->gisGkhField, $this->boolean()->null()->defaultValue(false));
         
-        $this->addColumn($this->module->fiasHouseTable, $this->gisGkhField, $this->boolean()->notNull()->defaultValue(false));
+        $this->addColumn($this->module->fiasHouseTable, $this->gisGkhField, $this->boolean()->null()->defaultValue(false));
     }
 
     public function down()
