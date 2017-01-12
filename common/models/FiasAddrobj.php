@@ -217,6 +217,7 @@ class FiasAddrobj extends ActiveRecord
             }], true)->
         indexBy('houseguid')->
         andWhere(['>', 'fias_house.enddate', 'NOW()'])->
+        andWhere(['fias_house.copy' => false])->
         andWhere(['fias_house.strstatus' => 0]);
 
         if (!empty($data['getCount'])) {
@@ -296,6 +297,7 @@ class FiasAddrobj extends ActiveRecord
             }], true)->
         indexBy('houseguid')->
         andWhere(['>', 'fias_house.enddate', 'NOW()'])->
+        andWhere(['fias_house.copy' => false])->
         andWhere(['fias_house.strstatus' => 0]);
 
         if (!empty($data['getCount'])) {
@@ -369,6 +371,7 @@ class FiasAddrobj extends ActiveRecord
             }], true)->
         indexBy('houseguid')->
         andWhere(['>', 'fias_house.enddate', 'NOW()'])->
+        andWhere(['fias_house.copy' => false])->
         andWhere(['fias_house.strstatus' => 0]);
 
         if (!empty($data['getCount'])) {
@@ -470,6 +473,7 @@ class FiasAddrobj extends ActiveRecord
             }])->
         where($where)->
         andWhere(['>', 'fias_house.enddate', 'NOW()'])->
+        andWhere(['fias_house.copy' => false])->
         andWhere(['fias_house.strstatus' => 0]);
 
         if (!empty($data['getCount'])) {
@@ -521,6 +525,7 @@ class FiasAddrobj extends ActiveRecord
                 fias_addrobj.aoguid AS id
         ")->
         where(['currstatus' => 0])->
+        andWhere(['copy' => false])->
         orderBy(['formalname' => SORT_ASC])->
         limit($count)->
         distinct();
@@ -559,6 +564,7 @@ class FiasAddrobj extends ActiveRecord
         ")->
         orderBy(["(substring(fias_house.housenum, '^[0-9]+'))::int,substring(fias_house.housenum, '[^0-9_].*$')" => SORT_ASC])->
         andWhere(['>', 'enddate', 'NOW()'])->
+        andWhere(['copy' => false])->
         andWhere(['strstatus' => 0])->
         limit($count);
 

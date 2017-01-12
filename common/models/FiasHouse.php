@@ -30,6 +30,9 @@ use \ejen\fias\Module;
  * @property string $normdoc Внешний ключ на нормативный документ
  * @property integer $counter Счетчик записей домов для КЛАДР 4
  *
+ * @property boolean $gisgkh запись из "дельты" ГИС ЖКХ
+ * @property boolean $copy запись является копией, не учитывать в выбораках
+ *
  * @property FiasAddrobj $addrobj
  *
  * @package ejen\fias\common\models

@@ -19,10 +19,10 @@ class m161227_102233_add_copy_column extends Migration
 
     public function up()
     {
-        $this->addColumn(FiasAddrobj::tableName(), 'copy', 'BOOLEAN');
+        $this->addColumn(FiasAddrobj::tableName(), 'copy', $this->boolean()->notNull()->defaultValue(false));
         $this->createIndex('fias_addrobj_copy', FiasAddrobj::tableName(), ['copy']);
 
-        $this->addColumn(FiasHouse::tableName(), 'copy', 'BOOLEAN');
+        $this->addColumn(FiasHouse::tableName(), 'copy', $this->boolean()->notNull()->defaultValue(false));
         $this->createIndex('fias_house_copy', FiasHouse::tableName(), ['copy']);
     }
 

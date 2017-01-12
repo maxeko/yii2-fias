@@ -38,6 +38,7 @@ class FiasHouseQuery extends ActiveQuery
         $alias = empty($alias) ? '' : $alias . '.';
 
         $this->andWhere(['>', "{$alias}enddate", 'NOW()']);
+        $this->andWhere(['>', "{$alias}copy", false]);
 
         return $this;
     }

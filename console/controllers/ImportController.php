@@ -808,7 +808,6 @@ class ImportController extends Controller
             '/^.*DLANDMRK\.DBF$/'   => FiasDlandmrk::className(),
             '/^.*DNORDOC\.DBF$/'    => FiasDnordoc::className(),
             '/^.*NORDOC\d\d\.DBF$/' => FiasNordoc::className(),
-            '/^.*ESTSTAT\.DBF$/'    => FiasDhousint::className(),
             '/^.*ACTSTAT\.DBF$/'    => FiasActstat::className(),
             '/^.*CENTERST\.DBF$/'   => FiasCenterst::className(),
             '/^.*ESTSTAT\.DBF$/'    => FiasEststat::className(),
