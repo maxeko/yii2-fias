@@ -23,6 +23,7 @@ use ejen\fias\common\models\FiasStrstat;
 use ejen\fias\common\models\FiasSocrbase;
 
 use ejen\fias\Module;
+use yii\base\Exception;
 use yii\BaseYii;
 use yii\console\Controller;
 use yii\db\ActiveRecord;
@@ -406,7 +407,11 @@ class ImportController extends Controller
                         if (($rowIndex && ($rowIndex + 1) % $this->batchSize == 0) || $rowIndex == $rowsCount - 1)
                         {
                             $deleted += $model->getDb()->createCommand()->delete($modelClass::tableName(), $primariesValues)->execute();
-                            $inserted += $model->getDb()->createCommand()->batchInsert($modelClass::tableName(), $columns, $insertRows)->execute();
+                            try {
+                                $inserted += $model->getDb()->createCommand()->batchInsert($modelClass::tableName(), $columns, $insertRows)->execute();
+                            } catch (Exception $e) {
+                                $this->stderr($e->getMessage());
+                            }
                             $primariesValues = [];
                             $insertRows = [];
                             $time = $this->ts('process_done', 'process_init');
