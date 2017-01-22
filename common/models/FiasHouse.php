@@ -2,6 +2,7 @@
 
 namespace ejen\fias\common\models;
 
+use ejen\fias\common\helpers\FiasHelper;
 use \yii\db\ActiveRecord;
 use \ejen\fias\Module;
 
@@ -99,6 +100,16 @@ class FiasHouse extends ActiveRecord
         ];
         $parts = array_filter($parts);
         return join(', ', $parts);
+    }
+
+    /**
+     * Полный адрес объекта
+     * @todo: сдлеать кастомное фотматирование типа %R, %C, %S, %h
+     * @return string
+     */
+    public function toString()
+    {
+        return sprintf('%s, %s', FiasHelper::toFullString($this->addrobj->aoguid), $this->getName());
     }
 
     /**
