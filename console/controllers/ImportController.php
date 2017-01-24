@@ -27,6 +27,7 @@ use yii\base\Exception;
 use yii\BaseYii;
 use yii\console\Controller;
 use yii\db\ActiveRecord;
+use yii\db\Migration;
 use yii\helpers\BaseFileHelper;
 
 class ImportController extends Controller
@@ -899,5 +900,26 @@ class ImportController extends Controller
             $transaction->commit();
         }*/
         return 0;
+    }
+
+    /**
+     * Удалить записи с дублирующимся PK
+     */
+    public function actionRemoveDoublicates()
+    {
+        $migration = new Migration();
+        $migration->db = Module::getInstance()->getDb();
+
+        $houseTable = FiasHouse::tableName();
+        $houseCopyTable = "fias_house_copy";
+
+        // создаём копию таблицы объектов адресации без дублей
+        $migration->execute("CREATE TABLE {$houseCopyTable} AS SELECT DISTINCT ON (houseid) * FROM {$houseTable}");
+
+        // удаляем старую таблица с объектами адресации
+        $migration->execute("DROP TABLE " . FiasHouse::tableName());
+
+        // заменяем старую таблицу с объектами адресации таблицей без дублей
+        $migration->execute("ALTER TABLE {$houseCopyTable} RENAME TO {$houseTable}");
     }
 }

@@ -574,6 +574,8 @@ class FiasAddrobj extends ActiveRecord
             ]);
         }
 
+        die($query->createCommand()->rawSql);
+
         /* @var FiasAddrobj[] $children */
         $houses = $query->asArray()->all();
 
