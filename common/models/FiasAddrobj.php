@@ -217,8 +217,7 @@ class FiasAddrobj extends ActiveRecord
             }], true)->
         indexBy('houseguid')->
         andWhere(['>', 'fias_house.enddate', 'NOW()'])->
-        andWhere(['fias_house.copy' => false])->
-        andWhere(['fias_house.strstatus' => 0]);
+        andWhere(['fias_house.copy' => false]);
 
         if (!empty($data['getCount'])) {
             $regionsCount = $query->count();
@@ -297,8 +296,7 @@ class FiasAddrobj extends ActiveRecord
             }], true)->
         indexBy('houseguid')->
         andWhere(['>', 'fias_house.enddate', 'NOW()'])->
-        andWhere(['fias_house.copy' => false])->
-        andWhere(['fias_house.strstatus' => 0]);
+        andWhere(['fias_house.copy' => false]);
 
         if (!empty($data['getCount'])) {
             $citysCount = $query->count();
@@ -371,8 +369,7 @@ class FiasAddrobj extends ActiveRecord
             }], true)->
         indexBy('houseguid')->
         andWhere(['>', 'fias_house.enddate', 'NOW()'])->
-        andWhere(['fias_house.copy' => false])->
-        andWhere(['fias_house.strstatus' => 0]);
+        andWhere(['fias_house.copy' => false]);
 
         if (!empty($data['getCount'])) {
             $streetsCount = $query->count();
@@ -473,8 +470,7 @@ class FiasAddrobj extends ActiveRecord
             }])->
         where($where)->
         andWhere(['>', 'fias_house.enddate', 'NOW()'])->
-        andWhere(['fias_house.copy' => false])->
-        andWhere(['fias_house.strstatus' => 0]);
+        andWhere(['fias_house.copy' => false]);
 
         if (!empty($data['getCount'])) {
             $housesCount = $query->count();
@@ -565,7 +561,6 @@ class FiasAddrobj extends ActiveRecord
         orderBy(["(substring(fias_house.housenum, '^[0-9]+'))::int,substring(fias_house.housenum, '[^0-9_].*$')" => SORT_ASC])->
         andWhere(['>', 'enddate', 'NOW()'])->
         andWhere(['copy' => false])->
-        andWhere(['strstatus' => 0])->
         limit($count);
 
         if (!empty($formalname) && $formalname != '*') {
@@ -573,8 +568,6 @@ class FiasAddrobj extends ActiveRecord
                 'like', 'upper(housenum COLLATE "ru_RU")', mb_strtoupper($formalname)
             ]);
         }
-
-        die($query->createCommand()->rawSql);
 
         /* @var FiasAddrobj[] $children */
         $houses = $query->asArray()->all();
