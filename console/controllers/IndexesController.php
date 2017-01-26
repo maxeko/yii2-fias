@@ -53,16 +53,41 @@ class IndexesController extends Controller
         $migration = new Migration();
         $migration->db = Module::getInstance()->getDb();
 
-        $migration->addPrimaryKey("fias_addrobj_aoid_pk", FiasAddrobj::tableName(), ['aoid']);
         $migration->addPrimaryKey("fias_house_houseid_pk", FiasHouse::tableName(), ['houseid']);
-
         $migration->execute("CREATE INDEX \"fias_house_houseguid_enddate\" ON \"fias_house\" (\"houseguid\", \"enddate\", \"copy\")");
         $migration->execute("CREATE INDEX \"fias_house_housenum_aoguid_enddate\" ON \"fias_house\" (\"housenum\", \"aoguid\", \"enddate\", \"copy\")");
         $migration->execute("CREATE INDEX \"fias_house_aoguid_enddate\" ON \"fias_house\" (\"aoguid\", \"enddate\", \"copy\")");
 
-        $migration->execute("CREATE INDEX \"fias_addrobj_aoguid_enddate_livestatus\" ON \"fias_addrobj\" (\"aoguid\", \"enddate\", \"livestatus\", \"copy\")");
-        $migration->execute("CREATE INDEX \"fias_addrobj_formalname_aolevel_parentguid_livestatus_enddate\" ON \"fias_addrobj\" (\"formalname\", \"aolevel\", \"parentguid\", \"livestatus\", \"enddate\", \"copy\");");
-        $migration->execute("CREATE INDEX \"fias_addrobj_currstatus_parentguid_formalname\" ON \"fias_addrobj\" (\"currstatus\", \"parentguid\", \"formalname\", \"copy\");");
-        $migration->execute("CREATE INDEX \"fias_addrobj_aolevel_formalname\" ON \"fias_addrobj\" (\"aolevel\", \"formalname\", \"copy\");");
+        // PK для адресообразующих элементов
+        $migration->addPrimaryKey("fias_addrobj_aoid_pk", FiasAddrobj::tableName(), ['aoid']);
+
+        // быстрый поиск актуального адресообразующего элемента по GUID
+        $migration->createIndex('fias_aoguid_ix', FiasAddrobj::tableName(), [
+            'aoguid',
+            'currstatus',
+            'copy'
+        ]);
+
+        // быстрый поиск актуальных адресообразующих элементов по названию и уровню
+        $migration->createIndex('fias_aolevel_ix', FiasAddrobj::tableName(), [
+            'aolevel',
+            'formalname',
+            'currstatus',
+            'copy'
+        ]);
+
+        // быстрый поиск актуальных адресообразующих элементов по родительскому элементу
+        $migration->createIndex('fias_parentguid_ix', FiasAddrobj::tableName(), [
+            'parentguid',
+            'formalname',
+            'currstatus',
+            'copy'
+        ]);
+
+//        $migration->execute("CREATE INDEX \"fias_addrobj_aoguid_enddate_livestatus\" ON \"fias_addrobj\" (\"aoguid\", \"enddate\", \"livestatus\", \"copy\")");
+//        $migration->execute("CREATE INDEX \"fias_addrobj_formalname_aolevel_parentguid_livestatus_enddate\" ON \"fias_addrobj\" (\"formalname\", \"aolevel\", \"parentguid\", \"livestatus\", \"enddate\", \"copy\");");
+//        $migration->execute("CREATE INDEX \"fias_addrobj_currstatus_parentguid_formalname\" ON \"fias_addrobj\" (\"currstatus\", \"parentguid\", \"formalname\", \"copy\");");
+//        $migration->execute("CREATE INDEX \"fias_addrobj_aolevel_formalname\" ON \"fias_addrobj\" (\"aolevel\", \"formalname\", \"copy\");");
+
     }
 }

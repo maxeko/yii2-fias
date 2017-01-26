@@ -54,10 +54,22 @@ use \ejen\fias\Module;
  */
 class FiasAddrobj extends ActiveRecord
 {
-    const AOLEVEL_REGION    = 1;
-    const AOLEVEL_CITY      = 4;
-    const AOLEVEL_STREET    = 7;
+    /* *
+     * Уровни адресообразующих элементов
+     ************************************/
+    const AOLEVEL_REGION        = 1; // субъект РФ
+    const AOLEVEL_DISTRICT      = 3; // район
+    const AOLEVEL_CITY          = 4; // город
+    const AOLEVEL_SETTLEMENT    = 6; // населённый пункт
+    const AOLEVEL_STREET        = 7; // улица
 
+    /* *
+     * ActiveRecord
+     ***************/
+
+    /**
+     * @inheritdoc
+     */
     public static function getDb()
     {
         $module = Module::getInstance();
@@ -65,12 +77,29 @@ class FiasAddrobj extends ActiveRecord
         return !empty($module) ? $module->getDb() : parent::getDb();
     }
 
+    /**
+     * @inheritdoc
+     */
     public static function tableName()
     {
         return '{{%fias_addrobj}}';
     }
 
     /**
+     * Подключение собственного конструктора запросов
+     * @return FiasAddrobjQuery
+     */
+    public static function find()
+    {
+        return \Yii::createObject(FiasAddrobjQuery::className(), [get_called_class()]);
+    }
+
+    /* *
+     * ActiveRecord relations
+     *************************/
+
+    /**
+     * Объекты адресации (дома), ссылаюшиеся на данный адресообразующий элемент
      * @return \yii\db\ActiveQuery
      */
     public function getHouses()
@@ -79,21 +108,37 @@ class FiasAddrobj extends ActiveRecord
     }
 
     /**
-     * @return \yii\db\ActiveQuery
+     * Родительский адресообразуюший элемент (актуальная запись)
+     * @return FiasAddrobjQuery
      */
     public function getParent()
     {
-        return $this->hasOne(static::className(), ['aoguid' => 'parentguid']);
+        /* @var FiasAddrobjQuery $query */
+        $query = $this->hasOne(static::className(), ['aoguid' => 'parentguid']);
+        $query->actual();
+        return $query;
     }
 
     /**
-     * @return \yii\db\ActiveQuery
+     * Дочерние адресообразующие элементы (только актуальные записи)
+     * @return FiasAddrobjQuery
      */
     public function getChildren()
     {
-        return $this->hasMany(static::className(), ['parentguid' => 'aoguid']);
+        /* @var FiasAddrobjQuery $query */
+        $query = $this->hasMany(static::className(), ['parentguid' => 'aoguid']);
+        $query->actual();
+        return $query;
     }
 
+    /* *
+     * Функции объекта
+     ******************/
+
+    /**
+     * Полное название адресообразующего элемента (с расшифровкой типа)
+     * @return string
+     */
     public function getFullName()
     {
         switch ($this->aolevel) {
@@ -124,10 +169,18 @@ class FiasAddrobj extends ActiveRecord
         return $this->formalname . " " . $this->shortname;
     }
 
+    /**
+     * Название адресообразующего элемента
+     * @return string
+     */
     public function getName()
     {
         return $this->formalname . " " . $this->shortname;
     }
+
+    /* *
+     * Далее -- дикий трэш и угар (исправляем по-тихоньку)
+     ******************************************************/
 
     public static function findAddress(
     $data = [
@@ -506,31 +559,22 @@ class FiasAddrobj extends ActiveRecord
 
     public static function showChildren($parentGuid, $formalname = null, $count = 100)
     {
-        $parentAddrobj = FiasAddrobj::find()
-        ->where(['aoguid' => $parentGuid])
-        ->one();
-
-        if (empty($parentAddrobj)) {
-            return;
-        }
-
-        /* @var ActiveQuery $query */
-        $query = $parentAddrobj->getChildren()->
-        select("*,
-                (fias_addrobj.formalname || ' ' || fias_addrobj.shortname) AS title,
-                fias_addrobj.aoguid AS id
-        ")->
-        where(['currstatus' => 0])->
-        andWhere(['copy' => false])->
-        orderBy(['formalname' => SORT_ASC])->
-        limit($count)->
-        distinct();
+        $query = FiasAddrobj::find()
+            ->actual()
+            ->byParentGuid($parentGuid)
+            ->orderByName();
 
         if (!empty($formalname)) {
-            $query->andWhere([
-                'like', 'upper(formalname COLLATE "ru_RU")', mb_strtoupper($formalname)
-            ]);
+            $query->byName($formalname);
         }
+
+        $query
+            ->select("*,
+                (fias_addrobj.formalname || ' ' || fias_addrobj.shortname) AS title,
+                fias_addrobj.aoguid AS id
+            ")
+            ->limit($count)
+            ->distinct();
 
         /* @var FiasAddrobj[] $children */
         $children = $query->asArray()->all();
@@ -584,25 +628,20 @@ class FiasAddrobj extends ActiveRecord
         'offset' => 0
     ])
     {
-        $where = [];
-
-        if (!empty($data['aolevel'])) {
-            $where['aolevel'] = $data['aolevel'];
-        }
-
-        $addressesQuery = FiasAddrobj::find()->
-        select("*,
+        $addressesQuery = FiasAddrobj::find()
+            ->select("*,
                 (fias_addrobj.formalname || ' ' || fias_addrobj.shortname) AS title,
                 fias_addrobj.aoguid AS id
-        ")->
-        where($where);
+            ")
+            ->actual();
 
-        if (!empty($data['formalname'])) {
-            $addressesQuery = $addressesQuery->andWhere(['like', 'upper(formalname COLLATE "ru_RU")', mb_strtoupper($data['formalname'])]);
+        if (!empty($data['aolevel'])) {
+            $addressesQuery->byLevel($data['aolevel']);
         }
 
-        //die($addressesQuery->createCommand()->rawSql);
-        $addresses = [];
+        if (!empty($data['formalname'])) {
+            $addressesQuery->byName($data['formalname']);
+        }
 
         if (!empty($data['getCount'])) {
             $addresses = $addressesQuery->asArray()->count();
