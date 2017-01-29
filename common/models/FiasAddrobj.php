@@ -45,6 +45,7 @@ use \ejen\fias\Module;
  * @property string $normdoc Внешний ключ на нормативный документ
  * @property string $cadnum Кадастровый номер
  * @property integer $divtype Тип деления: 0 – не определено, 1 – муниципальное, 2 – административное
+ * @property string $fulltext_search полное наименование адресообразующего элемента для текстового поиска
  *
  * @property FiasHouse[] $houses
  * @property FiasAddrobj $parent
@@ -57,15 +58,15 @@ class FiasAddrobj extends ActiveRecord
     /* *
      * Уровни адресообразующих элементов
      ************************************/
-    const AOLEVEL_REGION                = 1; // субъект РФ
-    const AOLEVEL_DISTRICT              = 3; // район
-    const AOLEVEL_CITY                  = 4; // город
-    const AOLEVEL_INTRACITY_AREA        = 5; // внутригородская территория
-    const AOLEVEL_SETTLEMENT            = 6; // населённый пункт
-    const AOLEVEL_STREET                = 7; // улица
-    const AOLEVEL_PLANNING_STRUCTURE    = 65; // элемент планировочной структуры
-    const AOLEVEL_TERRITORY             = 90; // дополнительная территория (ГСК, СНТ, лагери отдыха и т.п.)
-    const AOLEVEL_TERRITORY_STREET      = 91; // улицы на дополнительной территории (улицы, линии, проезды)
+    const AOLEVEL_REGION = 1; // субъект РФ
+    const AOLEVEL_DISTRICT = 3; // район
+    const AOLEVEL_CITY = 4; // город
+    const AOLEVEL_INTRACITY_AREA = 5; // внутригородская территория
+    const AOLEVEL_SETTLEMENT = 6; // населённый пункт
+    const AOLEVEL_STREET = 7; // улица
+    const AOLEVEL_PLANNING_STRUCTURE = 65; // элемент планировочной структуры
+    const AOLEVEL_TERRITORY = 90; // дополнительная территория (ГСК, СНТ, лагери отдыха и т.п.)
+    const AOLEVEL_TERRITORY_STREET = 91; // улицы на дополнительной территории (улицы, линии, проезды)
 
     /* *
      * ActiveRecord
@@ -180,6 +181,25 @@ class FiasAddrobj extends ActiveRecord
     public function getName()
     {
         return $this->formalname . " " . $this->shortname;
+    }
+
+    /**
+     * Получить полное имя объекта для полнотекстового поиска
+     * @return string
+     */
+    public function getFulltextSearchIndexValue()
+    {
+        if (empty($this->fulltext_search)) {
+            $parts = [
+                !empty($this->parentguid) ? $this->parent->getFulltextSearchIndexValue() : '',
+                $this->formalname . " " . $this->shortname
+            ];
+            $parts = array_filter($parts);
+            $this->fulltext_search = join(', ', $parts);
+            $this->save();
+        }
+
+        return $this->fulltext_search;
     }
 
     /* *

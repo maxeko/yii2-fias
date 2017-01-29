@@ -922,4 +922,6 @@ class ImportController extends Controller
         // заменяем старую таблицу с объектами адресации таблицей без дублей
         $migration->execute("ALTER TABLE {$houseCopyTable} RENAME TO {$houseTable}");
     }
+
+
 }

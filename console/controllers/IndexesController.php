@@ -48,6 +48,9 @@ class IndexesController extends Controller
         }
     }
 
+    /**
+     * Построитьт все индексы
+     */
     public function actionBuildAll()
     {
         $migration = new Migration();
@@ -64,7 +67,6 @@ class IndexesController extends Controller
         // быстрый поиск актуального адресообразующего элемента по GUID
         $migration->createIndex('fias_aoguid_ix', FiasAddrobj::tableName(), [
             'aoguid',
-            'currstatus',
             'copy'
         ]);
 
@@ -72,7 +74,6 @@ class IndexesController extends Controller
         $migration->createIndex('fias_aolevel_ix', FiasAddrobj::tableName(), [
             'aolevel',
             'formalname',
-            'currstatus',
             'copy'
         ]);
 
@@ -80,14 +81,72 @@ class IndexesController extends Controller
         $migration->createIndex('fias_parentguid_ix', FiasAddrobj::tableName(), [
             'parentguid',
             'formalname',
-            'currstatus',
             'copy'
         ]);
+    }
 
-//        $migration->execute("CREATE INDEX \"fias_addrobj_aoguid_enddate_livestatus\" ON \"fias_addrobj\" (\"aoguid\", \"enddate\", \"livestatus\", \"copy\")");
-//        $migration->execute("CREATE INDEX \"fias_addrobj_formalname_aolevel_parentguid_livestatus_enddate\" ON \"fias_addrobj\" (\"formalname\", \"aolevel\", \"parentguid\", \"livestatus\", \"enddate\", \"copy\");");
-//        $migration->execute("CREATE INDEX \"fias_addrobj_currstatus_parentguid_formalname\" ON \"fias_addrobj\" (\"currstatus\", \"parentguid\", \"formalname\", \"copy\");");
-//        $migration->execute("CREATE INDEX \"fias_addrobj_aolevel_formalname\" ON \"fias_addrobj\" (\"aolevel\", \"formalname\", \"copy\");");
+    /**
+     * Удалить все исторические записи
+     */
+    public function actionRemoveHistory()
+    {
+        $migration = new Migration();
+        $migration->db = Module::getInstance()->getDb();
 
+        $addrobjTable = FiasAddrobj::tableName();
+        $houseTable = FiasHouse::tableName();
+
+        $migration->createIndex('fias_addrobj_currstatus_ix', FiasAddrobj::tableName(), ['currstatus']);
+        $migration->execute("DELETE FROM {$addrobjTable} WHERE NOT(currstatus = 0)");
+        $migration->dropIndex('fias_addrobj_currstatus_ix', FiasAddrobj::tableName());
+
+        $migration->createIndex('fias_house_enddate_ix', FiasHouse::tableName(), ['enddate']);
+        $migration->execute("DELETE FROM {$houseTable} WHERE enddate < now()");
+        $migration->dropIndex('fias_house_enddate_ix', FiasHouse::tableName());
+    }
+
+    /**
+     * Заполнить стоблец "полнотекстовый поиск"
+     */
+    public function actionBuildFillTextSearch()
+    {
+        echo "\nЗаполнение значений для полнотекстового поиска\n\n";
+
+        $totalCount = FiasAddrobj::find()->count();
+
+        $processed = 0;
+        $selectTime = 0;
+        $updateTime = 0;
+        while ($processed < $totalCount) {
+            $start = microtime(true);
+            $addresses = FiasAddrobj::find()->orderBy('aoid')->offset($processed)->limit(1000)->all();
+            $selectTime += microtime(true) - $start;
+            $start = microtime(true);
+            foreach ($addresses as $address) {
+                $address->getFulltextSearchIndexValue();
+                $processed++;
+            }
+            $updateTime += microtime(true) - $start;
+
+            echo sprintf(
+                "Обработано %d из %d. Время выборки %f (среднее %f), время обновления %f (среднее %f)",
+                $processed,
+                $totalCount,
+                $selectTime,
+                $selectTime / ($processed / 1000),
+                $updateTime,
+                $updateTime / ($processed / 1000)
+            );
+        }
+
+        $migration = new Migration();
+        $migration->db = Module::getInstance()->getDb();
+
+        // быстрый поиск актуальных адресообразующих элементов по полному наименованию
+        $migration->createIndex('fias_fulltext_search_ix', FiasAddrobj::tableName(), [
+            'parentguid',
+            'fulltext_search',
+            'copy'
+        ]);
     }
 }

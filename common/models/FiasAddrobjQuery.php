@@ -38,13 +38,18 @@ class FiasAddrobjQuery extends ActiveQuery
     public function actual($alias = null)
     {
         $alias = ($alias ? "{$alias}." : "");
-        $this->andWhere([
+        /*$this->andWhere([
             $alias . "currstatus" => 0
-        ]);
+        ]);*/
         $this->andWhere([
             $alias . "copy" => false
         ]);
         return $this;
+    }
+
+    public function history()
+    {
+
     }
 
     /**

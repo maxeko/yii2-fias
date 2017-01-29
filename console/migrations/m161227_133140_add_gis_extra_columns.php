@@ -6,6 +6,17 @@ use yii\db\Migration;
 
 class m161227_133140_add_gis_extra_columns extends Migration
 {
+    public function init()
+    {
+        $module = ejen\fias\Module::getInstance();
+
+        if (!empty($module)) {
+            $this->db = $module->getDb();
+        }
+
+        parent::init();
+    }
+
     public function up()
     {
         $this->addColumn(FiasAddrobj::tableName(), 'fias_addrobjid', 'VARCHAR(36)');
