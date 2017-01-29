@@ -129,7 +129,7 @@ class IndexesController extends Controller
             $updateTime += microtime(true) - $start;
 
             echo sprintf(
-                "Обработано %d из %d. Время выборки %f (среднее %f), время обновления %f (среднее %f)",
+                "\rОбработано %d из %d. Время выборки %f (среднее %f), время обновления %f (среднее %f)",
                 $processed,
                 $totalCount,
                 $selectTime,
