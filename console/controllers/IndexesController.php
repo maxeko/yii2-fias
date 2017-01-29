@@ -115,13 +115,10 @@ class IndexesController extends Controller
         $totalCount = FiasAddrobj::find()->count();
 
         $processed = 0;
-        $selectTime = 0;
         $updateTime = 0;
         while ($processed < $totalCount) {
             $start = microtime(true);
             $addresses = FiasAddrobj::find()->orderBy('aoid')->offset($processed)->limit(1000)->all();
-            $selectTime += microtime(true) - $start;
-            $start = microtime(true);
             foreach ($addresses as $address) {
                 $address->getFulltextSearchIndexValue();
                 $processed++;
@@ -129,11 +126,9 @@ class IndexesController extends Controller
             $updateTime += microtime(true) - $start;
 
             echo sprintf(
-                "\rОбработано %d из %d. Время выборки %f (среднее %f), время обновления %f (среднее %f)",
+                "\rОбработано %d из %d. Время обновления %f (среднее %f)",
                 $processed,
                 $totalCount,
-                $selectTime,
-                $selectTime / ($processed / 1000),
                 $updateTime,
                 $updateTime / ($processed / 1000)
             );
