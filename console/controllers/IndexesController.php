@@ -112,6 +112,11 @@ class IndexesController extends Controller
     {
         echo "\nЗаполнение значений для полнотекстового поиска\n\n";
 
+        $migration = new Migration();
+        $migration->db = Module::getInstance()->getDb();
+        $migration->dropIndex('fias_fulltext_search_ix', FiasAddrobj::tableName());
+        $migration->update(FiasAddrobj::tableName(), ['fulltext_search' => null]);
+
         $totalCount = FiasAddrobj::find()->count();
 
         $processed = 0;
@@ -134,12 +139,9 @@ class IndexesController extends Controller
             );
         }
 
-        $migration = new Migration();
-        $migration->db = Module::getInstance()->getDb();
-
         // быстрый поиск актуальных адресообразующих элементов по полному наименованию
         $migration->createIndex('fias_fulltext_search_ix', FiasAddrobj::tableName(), [
-            'parentguid',
+            'regioncode',
             'fulltext_search',
             'copy'
         ]);
