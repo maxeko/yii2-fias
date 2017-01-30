@@ -1,14 +1,14 @@
 <?php
 
 namespace ejen\fias;
+use ejen\fias\common\components\ActionLogger;
 use ejen\fias\common\components\NameBuilder;
 
 /**
  * Class Module
  *
  * @property NameBuilder $nameBuilder
- *
- * @package ejen\fias
+ * @property ActionLogger $actionLogger
  */
 class Module extends \yii\base\Module implements \yii\base\BootstrapInterface
 {
@@ -52,7 +52,7 @@ class Module extends \yii\base\Module implements \yii\base\BootstrapInterface
         }
 
         if ($app instanceof \yii\web\Application) {
-            //
+            $this->controllerNamespace = 'ejen\fias\web\controllers';
         } elseif ($app instanceof \yii\console\Application) {
             $this->controllerNamespace = 'ejen\fias\console\controllers';
         }

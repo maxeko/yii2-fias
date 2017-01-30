@@ -38,7 +38,11 @@ class FiasAddrobjQuery extends ActiveQuery
     public function actual($alias = null)
     {
         $alias = ($alias ? "{$alias}." : "");
-        /*$this->andWhere([
+        /*
+        // http://wiki.gis-lab.info/w/%D0%A4%D0%98%D0%90%D0%A1#.D0.A1.D1.82.D0.B0.D1.82.D1.83.D1.81_.D0.B0.D0.BA.D1.82.D1.83.D0.B0.D0.BB.D1.8C.D0.BD.D0.BE.D1.81.D1.82.D0.B8
+        // закомментировано потому что в данный момент работа ведётся с базой без иторических запией
+        // убирать пока не надо
+        $this->andWhere([
             $alias . "currstatus" => 0
         ]);*/
         $this->andWhere([
@@ -83,17 +87,38 @@ class FiasAddrobjQuery extends ActiveQuery
     }
 
     /**
-     * Поиск по названию
+     * Поиск по официальному наименованию
      * @param string $q строка запроса
      * @param string|null $alias
      * @return $this
      */
-    public function byName($q, $alias = null)
+    public function byFormalName($q, $alias = null)
     {
         $alias = ($alias ? "{$alias}." : "");
         $this->andWhere([
             'like', "upper({$alias}formalname COLLATE \"ru_RU\")", mb_strtoupper($q)
         ]);
+        return $this;
+    }
+
+    /**
+     * Поиск по полному названию
+     * @param string $q строка запроса
+     * @param string|null $alias
+     * @return $this
+     */
+    public function byFullName($q, $alias = null)
+    {
+        $alias = ($alias ? "{$alias}." : "");
+
+        $parts = mb_split('[\s,.]+', $q);
+
+        foreach ($parts as $part) {
+            $this->andWhere([
+                'like', "upper({$alias}fulltext_search COLLATE \"ru_RU\")", mb_strtoupper($part)
+            ]);
+        }
+
         return $this;
     }
 
@@ -111,6 +136,22 @@ class FiasAddrobjQuery extends ActiveQuery
         ]);
         return $this;
     }
+
+    /**
+     * Ограничить выборку заданным регионом (по коду региона)
+     * @param integer $regionCode
+     * @param string|null $alias
+     * @return $this
+     */
+    public function byRegionCode($regionCode, $alias = null)
+    {
+        $alias = ($alias ? "{$alias}." : "");
+        $this->andWhere([
+            $alias . "regioncode" => $regionCode
+        ]);
+        return $this;
+    }
+
 
     /**
      * Сортировать по названию

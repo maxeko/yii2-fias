@@ -46,6 +46,7 @@ use \ejen\fias\Module;
  * @property string $cadnum Кадастровый номер
  * @property integer $divtype Тип деления: 0 – не определено, 1 – муниципальное, 2 – административное
  * @property string $fulltext_search полное наименование адресообразующего элемента для текстового поиска
+ * @property integer $houses_count количество адресных объектов в подчинении
  *
  * @property FiasHouse[] $houses
  * @property FiasAddrobj $parent
@@ -589,7 +590,7 @@ class FiasAddrobj extends ActiveRecord
             ->orderByName();
 
         if (!empty($formalname)) {
-            $query->byName($formalname);
+            $query->byFormalName($formalname);
         }
 
         $query
@@ -664,7 +665,7 @@ class FiasAddrobj extends ActiveRecord
         }
 
         if (!empty($data['formalname'])) {
-            $addressesQuery->byName($data['formalname']);
+            $addressesQuery->byFormalName($data['formalname']);
         }
 
         if (!empty($data['getCount'])) {

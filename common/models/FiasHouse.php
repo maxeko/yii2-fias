@@ -41,6 +41,23 @@ use \ejen\fias\Module;
 class FiasHouse extends ActiveRecord
 {
     /* *
+     * Признак владения
+     *******************/
+    const ESTSTATUS_UNEFINED            = 0; // не определено
+    const ESTSTATUS_GROUNDS             = 1; // владение
+    const ESTSTATUS_HOUSE               = 2; // дом
+    const ESTSTATUS_HOUSE_AND_GROUNDS   = 3; // домовладение
+
+    /* *
+     * Признак строения
+     *******************/
+
+    const STRSTATUS_UNDEFINED   = 0; // не определено
+    const STRSTATUS_SROYENIE    = 1; // строение
+    const STRSTATUS_SOORUZHENIE = 2; // сооружение
+    const STRSTATUS_LITER       = 3; // литер
+
+    /* *
      * ActiveRecord
      ***************/
 
@@ -88,15 +105,37 @@ class FiasHouse extends ActiveRecord
      ****************/
 
     /**
-     * Получить полную строку с литерами (дом, корп. .., стр. ..)
+     * Получить полную строку "дом, корпус, строение"
      * @return string
      */
     public function getName()
     {
+        $eststatusPrefix = '';
+        switch ($this->eststatus) {
+            case static::ESTSTATUS_GROUNDS:
+                $eststatusPrefix = 'Владение ';
+                break;
+            case static::ESTSTATUS_HOUSE:
+                $eststatusPrefix = 'Дом ';
+                break;
+            case static::ESTSTATUS_HOUSE_AND_GROUNDS:
+                $eststatusPrefix = 'Домовладение';
+                break;
+        }
+
+        $strstatusPrefix = 'строение';
+        switch ($this->strstatus) {
+            case static::STRSTATUS_SOORUZHENIE:
+                $strstatusPrefix = 'сооружение';
+                break;
+            case static::STRSTATUS_LITER:
+                $strstatusPrefix = 'литер';
+                break;
+        }
         $parts = [
-            $this->housenum,
-            $this->buildnum ? "корп. {$this->buildnum}" : false,
-            $this->strucnum ? "стр. {$this->strucnum}" : false
+            $eststatusPrefix . $this->housenum, // дом (владение, домовладение)
+            $this->buildnum ? "корп. {$this->buildnum}" : false, // корпус
+            $this->strucnum ? "{$strstatusPrefix} {$this->strucnum}" : false // строение (сооружение, литер)
         ];
         $parts = array_filter($parts);
         return join(', ', $parts);
