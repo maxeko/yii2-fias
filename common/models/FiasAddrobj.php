@@ -100,6 +100,17 @@ class FiasAddrobj extends ActiveRecord
         return \Yii::createObject(FiasAddrobjQuery::className(), [get_called_class()]);
     }
 
+    public function fields()
+    {
+        return array_merge(parent::fields(), [
+            'fulltext_search' => function (self $model) {
+                $items = explode(', ', $model->fulltext_search);
+                array_shift($items);
+                return join(', ', $items);
+            }
+        ]);
+    }
+
     /* *
      * ActiveRecord relations
      *************************/

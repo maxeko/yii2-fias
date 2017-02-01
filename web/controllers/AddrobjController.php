@@ -12,11 +12,14 @@ use yii\web\Response;
 use yii\filters\ContentNegotiator;
 
 /**
- * Выборка адресообразующих элементов
+ * Адресообразующие элементы
  * @mixin ContentNegotiator
  */
 class AddrobjController extends Controller
 {
+    /**
+     * @inheritdoc
+     */
     public function behaviors()
     {
         return [
@@ -33,9 +36,11 @@ class AddrobjController extends Controller
     }
 
     /**
-     * Поиск адресообразующих элементов по полному наименованию
+     * Поиск адресообразующих элементов по
+     * - региону
+     * - строке запроса
      */
-    public function actionSearch()
+    public function actionIndex()
     {
         $form = new AddrobjSearchForm();
 
@@ -45,21 +50,59 @@ class AddrobjController extends Controller
             throw new BadRequestHttpException(json_encode($form->errors, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
         }
 
+        $selectFields = [
+            'aoguid',
+            'formalname',
+            'shortname',
+            'fulltext_search'
+        ];
+
         $dataProvider = new ActiveDataProvider();
-        $dataProvider->query = $form->query();
+        $dataProvider->query = $form->query()->select($selectFields);
 
         if (\Yii::$app->request->isAjax) {
             return $dataProvider->getModels();
         }
 
-        //return $dataProvider->query->createCommand()->rawSql;
+        //@todo: сделать дефолтную вьюшку для просмотра адресов
         return json_encode(ArrayHelper::toArray($dataProvider->getModels(), [
-            FiasAddrobj::className() => [
-                'aoguid',
-                'formalname',
-                'shortname',
-                'fulltext_search'
-            ]
+            FiasAddrobj::className() => $selectFields
+        ]), JSON_UNESCAPED_UNICODE);
+    }
+
+    /**
+     * Получить полный перечень регионов
+     */
+    public function actionRegions()
+    {
+        $fields = [
+            'regioncode',
+            'formalname',
+            'shortname',
+        ];
+
+        $extraFields = [
+            'name'
+        ];
+
+        $query = FiasAddrobj::find()
+            ->actual()
+            ->byLevel(FiasAddrobj::AOLEVEL_REGION)
+            ->orderBy(['regioncode' => SORT_ASC]);
+
+        $dataProvider = new ActiveDataProvider();
+        $dataProvider->query = $query;
+        $dataProvider->pagination->pageSize = 200;
+
+        if (\Yii::$app->request->isAjax) {
+            return ArrayHelper::toArray($dataProvider->getModels(), [
+                FiasAddrobj::className() => array_merge($fields, $extraFields)
+            ]);
+        }
+
+        //@todo: сделать дефолтную вьюшку для просмотра регионов
+        return json_encode(ArrayHelper::toArray($dataProvider->getModels(), [
+            FiasAddrobj::className() => array_merge($fields, $extraFields)
         ]), JSON_UNESCAPED_UNICODE);
     }
 }

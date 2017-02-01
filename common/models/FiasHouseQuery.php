@@ -38,13 +38,13 @@ class FiasHouseQuery extends ActiveQuery
         $alias = empty($alias) ? '' : $alias . '.';
 
         $this->andWhere(['>', "{$alias}enddate", 'NOW()']);
-        $this->andWhere(['>', "{$alias}copy", false]);
+        $this->andWhere(["{$alias}copy" => false]);
 
         return $this;
     }
 
     /**
-     * Выбрать элементы с заданным GUID
+     * Выбрать с заданным GUID
      * @param string $guid
      * @param string|null $alias
      * @return $this
@@ -55,8 +55,20 @@ class FiasHouseQuery extends ActiveQuery
 
         $this->andWhere(["{$alias}houseguid" => strtolower($guid)]);
 
-        //@todo: разобраться с семантикой strstatus и вынести в отдельный метод
-        $this->andWhere(["{$alias}strstatus" => 0]);
+        return $this;
+    }
+
+    /**
+     * Выбрать для конкретного адресообразующего элемента
+     * @param string $aoguid
+     * @param string|null $alias
+     * @return $this
+     */
+    public function byAoguid($aoguid, $alias = null)
+    {
+        $alias = empty($alias) ? '' : $alias . '.';
+
+        $this->andWhere(["{$alias}aoguid" => strtolower($aoguid)]);
 
         return $this;
     }

@@ -152,6 +152,19 @@ class FiasAddrobjQuery extends ActiveQuery
         return $this;
     }
 
+    /**
+     * Выбрать только те элементы у которых есть подчинённые записи об адресных объекта
+     * @param string|null $alias
+     * @return $this
+     */
+    public function withChildHouses($alias = null)
+    {
+        $alias = ($alias ? "{$alias}." : "");
+        $this->andWhere([
+            '>', $alias . "houses_count", 0
+        ]);
+        return $this;
+    }
 
     /**
      * Сортировать по названию

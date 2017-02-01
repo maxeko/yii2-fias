@@ -88,6 +88,18 @@ class FiasHouse extends ActiveRecord
         return \Yii::createObject(FiasHouseQuery::className(), [get_called_class()]);
     }
 
+    /**
+     * @inheritdoc
+     */
+    public function extraFields()
+    {
+        return array_merge(parent::extraFields(), [
+            'name' => function (self $model) {
+                return $model->getName();
+            }
+        ]);
+    }
+
     /* *
      * ActiveRecord relations
      *************************/

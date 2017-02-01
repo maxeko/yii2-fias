@@ -34,7 +34,7 @@ class AddrobjSearchForm extends Model
     public function rules()
     {
         return [
-            ['q', 'required'],
+            [['q', 'regionCode'], 'required'],
             ['q', 'string', 'min' => 3],
             ['regionCode', 'number', 'min' => 1, 'max' => 99]
         ];
@@ -46,7 +46,7 @@ class AddrobjSearchForm extends Model
      */
     public function query()
     {
-        $query = FiasAddrobj::find()->actual();
+        $query = FiasAddrobj::find()->actual()->withChildHouses();
 
         if ($this->regionCode) {
             $query->byRegionCode($this->regionCode);
