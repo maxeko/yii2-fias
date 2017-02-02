@@ -43,7 +43,7 @@ class NameBuilder extends Component
             /* @var FiasAddrobj $fiasObject */
 
             /* @var FiasAddrobj $parent */
-            $parent = $fiasObject->getParent()->where(['currstatus' => 0])->one();
+            $parent = $fiasObject->getParent()->actual()->one();
             $name = $fiasObject->getName();
 
         }

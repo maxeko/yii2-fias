@@ -104,9 +104,7 @@ class FiasAddrobj extends ActiveRecord
     {
         return array_merge(parent::fields(), [
             'fulltext_search' => function (self $model) {
-                $items = explode(', ', $model->fulltext_search);
-                array_shift($items);
-                return join(', ', $items);
+                return $model->getFullNameWithoutRegion();
             }
         ]);
     }
@@ -130,10 +128,7 @@ class FiasAddrobj extends ActiveRecord
      */
     public function getParent()
     {
-        /* @var FiasAddrobjQuery $query */
-        $query = $this->hasOne(static::className(), ['aoguid' => 'parentguid']);
-        $query->actual();
-        return $query;
+        return $this->hasOne(static::className(), ['aoguid' => 'parentguid']);
     }
 
     /**
@@ -142,10 +137,7 @@ class FiasAddrobj extends ActiveRecord
      */
     public function getChildren()
     {
-        /* @var FiasAddrobjQuery $query */
-        $query = $this->hasMany(static::className(), ['parentguid' => 'aoguid']);
-        $query->actual();
-        return $query;
+        return $this->hasMany(static::className(), ['parentguid' => 'aoguid']);
     }
 
     /* *
@@ -193,6 +185,17 @@ class FiasAddrobj extends ActiveRecord
     public function getName()
     {
         return $this->formalname . " " . $this->shortname;
+    }
+
+    /**
+     * Полное название объекта, со всеми уровнями кроме субъекта
+     * @return string
+     */
+    public function getFullNameWithoutRegion()
+    {
+        $items = explode(', ', $this->fulltext_search);
+        array_shift($items);
+        return join(', ', $items);
     }
 
     /**
@@ -450,15 +453,11 @@ class FiasAddrobj extends ActiveRecord
     ]
     )
     {
-        /* @var ActiveQuery $query */
-        $query = FiasHouse::find()->
-        innerJoinWith(['addrobj AS address' => function($query) use ($data) {
-                $query->andWhere(['address.currstatus' => 0]);
-                $query->andWhere(['address.aoguid' => $data['street_id']]);
-            }], true)->
-        indexBy('houseguid')->
-        andWhere(['>', 'fias_house.enddate', 'NOW()'])->
-        andWhere(['fias_house.copy' => false]);
+        /* @var FiasHouseQuery$query */
+        $query = FiasHouse::find()->alias('fias_house')
+            ->joinWith('addrobj address', true, 'INNER JOIN')
+            ->actual('fias_house')
+            ->byAoguid($data['street_id'], 'fias_house');
 
         if (!empty($data['getCount'])) {
             $streetsCount = $query->count();
@@ -487,6 +486,10 @@ class FiasAddrobj extends ActiveRecord
         }
 
         $streets = $query->asArray()->all();
+
+        foreach ($streets as $i => $street) {
+            $streets[$i]['housenum'] = FiasHouse::findOne($street['houseid'])->getName();
+        }
 
         return $streets;
     }
