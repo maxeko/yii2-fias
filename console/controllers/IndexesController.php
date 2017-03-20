@@ -182,6 +182,7 @@ class IndexesController extends Controller
 
         $logger->step('Заполнение кэша полных названий');
         $totalCount = FiasAddrobj::find()->count();
+        $logger->setItemsCount($totalCount);
         $processed = 0;
         while ($processed < $totalCount) {
             $addresses = FiasAddrobj::find()->orderBy('aoid')->offset($processed)->limit(1000)->all();
