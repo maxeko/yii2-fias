@@ -169,7 +169,7 @@ class ActionLogger extends Component
         $this->stepExecutionTime = time() - $this->stepStartTime;
 
         $percentage = intdiv(100 * $this->itemsProcessed, $this->itemsCount);
-        $timeLeft = intval(100 * $this->stepExecutionTime / $percentage) - $this->stepExecutionTime;
+        $timeLeft = $percentage ? intval(100 * $this->stepExecutionTime / $percentage) - $this->stepExecutionTime : 0;
 
         \Yii::$app->controller->stdout(sprintf(
             "Обработано %d из %d (%d%%). Время выполнения %s" . ($timeLeft ? ", осталось ~ %s" : "             ") . "             ",
