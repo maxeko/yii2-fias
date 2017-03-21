@@ -54,6 +54,13 @@ class ImportController extends Controller
     private $classMap = [];
 
     /**
+     * Перечисление колонок в выгрузке ГИСа по-умолчанию
+     *
+     * @var array
+     */
+    private $gisColumns = [];
+
+    /**
      * Отношение колонок ГИСа к ФИАСу
      *
      * @var array
@@ -100,6 +107,62 @@ class ImportController extends Controller
             'dhousint'   => FiasDhousint::className(),
             'dlandmrk'   => FiasDlandmrk::className(),
             'dnordoc'    => FiasDnordoc::className()];
+
+        $this->gisColumns = [
+            FiasAddrobj::tableName() => [
+                "aoid",
+                "aoguid",
+                "formalname",
+                "shortname",
+                "aolevel",
+                "parentguid",
+                "regioncode",
+                "autocode",
+                "areacode",
+                "citycode",
+                "ctarcode",
+                "placecode",
+                "streetcode",
+                "extrcode",
+                "sextcode",
+                "postalcode",
+                "offname",
+                "oktmo",
+                "previd",
+                "nextid",
+                null,
+                "startdate",
+                "enddate",
+                null,
+                null,
+                null,
+                "fias_addrobjid",
+                "fias_addrobjguid",
+                "gisgkh"
+            ],
+            FiasHouse::tableName() => [
+                "houseid",
+                "houseguid",
+                "aoguid",
+                null,
+                "housenum",
+                "buildnum",
+                "strucnum",
+                "eststatus",
+                "strstatus",
+                "oktmo",
+                "postalcode",
+                null,
+                "startdate",
+                "enddate",
+                null,
+                null,
+                null,
+                "fias_houseid",
+                "fias_houseguid",
+                "gisgkh" // дополнительная колонка
+            ]
+        ];
 
         $this->gisColumnMap = [
             FiasAddrobj::tableName() => [
@@ -151,6 +214,16 @@ class ImportController extends Controller
         }
 
         return round($this->timeStamps[$name], 2);
+    }
+
+    /**
+     * По-умолчанию
+     *
+     * @return int
+     */
+    public function actionIndex()
+    {
+        return $this->actionFias();
     }
 
     /**
@@ -311,7 +384,7 @@ class ImportController extends Controller
                         continue;
                     }
 
-                    $db = @dbase_open($remoteFileName, 0);
+                    $db = @\dbase_open($remoteFileName, 0);
 
                     if (!$db) {
                         $this->stderr("Не удалось открыть\n");
@@ -494,8 +567,6 @@ class ImportController extends Controller
 
         $zip->close();
 
-        unlink($filename);
-
         $fullStatistic->extract = $this->ts('extract', 'init');
 
         $archiveFiles = scandir($extractDestinationFolder);
@@ -598,10 +669,9 @@ class ImportController extends Controller
 
             $fp = fopen($filename, "r");
 
-            $columns = null;
+            $columns = array_values(array_filter($this->gisColumns[$model::tableName()]));
             $rows = [];
             $rowsCount = 0;
-            $skipsCount = 0;
 
             $deleted = 0;
             $inserted = 0;
@@ -631,34 +701,6 @@ class ImportController extends Controller
 
             while (($data = fgetcsv($fp, 0, ";")) !== false)
             {
-                // определение колонок выгрузки
-
-                if (!$columns)
-                {
-                    $columns = [];
-
-                    foreach ($data as $index => $item)
-                    {
-                        // если колонка помечена для определения копии, сохраняем её индекс (для данных)
-                        if (!empty($this->gisCopies[$model::tableName()][$item]))
-                        {
-                            $copyIndexes[$index] = $this->gisCopies[$model::tableName()][$item];
-                        }
-
-                        // подмена названий колонок выгрузки
-                        $item = empty($this->gisColumnMap[$model::tableName()][$item]) ?
-                            $item : $this->gisColumnMap[$model::tableName()][$item];
-
-                        // если колонка не используется, она всё равно остаётся для соответствия
-                        // индексов данных и колонок, но без имени
-                        $columns[] = $item && $model->hasAttribute($item) ? $item : "";
-                    }
-
-                    // дополнительная колонка
-                    $columns[] = "gisgkh";
-                    continue;
-                }
-
                 $row = [];
                 $copy = [];
 
@@ -666,7 +708,11 @@ class ImportController extends Controller
 
                 for ($index = 0; $index < count($data); $index++)
                 {
-                    $column = $columns[$index];
+                    if (!isset($this->gisColumns[$model::tableName()][$index])) {
+                        continue;
+                    }
+
+                    $column = $this->gisColumns[$model::tableName()][$index];
                     $value = $data[$index];
 
                     if ($column)
@@ -775,27 +821,6 @@ class ImportController extends Controller
         }
 
         BaseFileHelper::removeDirectory($extractDestinationFolder);
-
-        return 0;
-    }
-
-    /**
-     * Запуск обновления базы ФИАС и поиск обновлений ГИСа
-     */
-    public function actionCron()
-    {
-        $this->actionFias();
-
-        $runtime = BaseYii::getAlias("@runtime");
-        $files = scandir($runtime);
-
-        foreach ($files as $file)
-        {
-            if (substr($file, 0, 3) == "gis")
-            {
-                $this->actionGis("{$runtime}/$file");
-            }
-        }
 
         return 0;
     }

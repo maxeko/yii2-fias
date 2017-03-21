@@ -62,7 +62,7 @@ class IndexesController extends Controller
         $migration = new Migration();
         $migration->db = Module::getInstance()->getDb();
 
-        $logger->step('Первичный ключ для таблицы объектов адпесации');
+        $logger->step('Первичный ключ для таблицы объектов адресации');
         $migration->addPrimaryKey("fias_house_houseid_pk", FiasHouse::tableName(), ['houseid']);
         $logger->completed();
 
@@ -217,6 +217,56 @@ class IndexesController extends Controller
             GROUP BY a.aoid
           ) AS t WHERE t.aoid = fias_addrobj.aoid;
         ");
+    }
+
+    /**
+     * Создание индексов необходимых для импорта дампа ФИАС
+     */
+    public function actionBuildFiasImport()
+    {
+        $logger = Module::getInstance()->actionLogger;
+        $logger->action('Построение индексов обновления ФИАС', 2);
+
+        $migration = new Migration();
+        $migration->db = Module::getInstance()->getDb();
+
+        $logger->step('Первичный ключ для таблицы объектов адресации');
+        $migration->addPrimaryKey("fias_house_houseid_pk", FiasHouse::tableName(), ['houseid']);
+        $logger->completed();
+
+        $logger->step('Первичный ключ для таблицы адресообразующих объектов');
+        $migration->addPrimaryKey("fias_addrobj_aoid_pk", FiasAddrobj::tableName(), ['aoid']);
+        $logger->completed();
+    }
+
+    /**
+     * Создание индексов необходимых для импорта дельты ГИС ЖКХ
+     */
+    public function actionBuildGisDelta()
+    {
+        $logger = Module::getInstance()->actionLogger;
+        $logger->action('Построение индексов для импорта дельты ГИС ЖКХ', 4);
+
+        $migration = new Migration();
+        $migration->db = Module::getInstance()->getDb();
+
+        $logger->step('Первичный ключ для таблицы объектов адресации');
+        $migration->addPrimaryKey("fias_house_houseid_pk", FiasHouse::tableName(), ['houseid']);
+        $logger->completed();
+
+        $logger->step('Индекс (houseid, houseguid)');
+        $tableName = FiasHouse::tableName();
+        $migration->execute("CREATE INDEX \"fias_house_houseid_houseguid_ix\" ON {$tableName} (\"houseid\", \"houseguid\", \"copy\")");
+        $logger->completed();
+
+        $logger->step('Первичный ключ (aoid)');
+        $migration->addPrimaryKey("fias_addrobj_aoid_pk", FiasAddrobj::tableName(), ['aoid']);
+        $logger->completed();
+
+        $logger->step('Индекс (aoid, aoguid)');
+        $tableName = FiasAddrobj::tableName();
+        $migration->execute("CREATE INDEX \"fias_addrobj_aoid_aoguid_ix\" ON {$tableName} (\"aoid\", \"aoguid\", \"copy\")");
+        $logger->completed();
     }
 
     /**
