@@ -407,7 +407,10 @@ class ImportController extends Controller
 
                         if (($rowIndex && ($rowIndex + 1) % $this->batchSize == 0) || $rowIndex == $rowsCount - 1)
                         {
-                            $deleted += $model->getDb()->createCommand()->delete($modelClass::tableName(), $primariesValues)->execute();
+                            if (count($primariesValues)) {
+                                $deleted += $model->getDb()->createCommand()->delete($modelClass::tableName(), $primariesValues)->execute();
+                            }
+
                             try {
                                 $inserted += $model->getDb()->createCommand()->batchInsert($modelClass::tableName(), $columns, $insertRows)->execute();
                             } catch (Exception $e) {
@@ -416,7 +419,7 @@ class ImportController extends Controller
                             $primariesValues = [];
                             $insertRows = [];
                             $time = $this->ts('process_done', 'process_init');
-                            $this->stdout("Обработано " . ($rowIndex + 1) . " из $rowsCount записей за {$time} сек. \r");
+                            $this->stdout("Обработано " . ($rowIndex + 1) . " из {$rowsCount} записей за {$time} сек. \r");
                         }
                     }
 
@@ -718,8 +721,11 @@ class ImportController extends Controller
 
                 if ($rowsCount % $this->batchSize == 0 || $eof) {
 
-                    // удаление дублирующихся записей, для последующей замены новыми
-                    $deleted += $db->createCommand()->delete($model::tableName(), $primariesValues)->execute();
+                    if (count($primariesValues)) {
+                        // удаление дублирующихся записей, для последующей замены новыми
+                        $deleted += $db->createCommand()->delete($model::tableName(), $primariesValues)->execute();
+                    }
+
                     $inserted += $db->createCommand()->batchInsert($model::tableName(), array_filter($columns), $rows)->execute();
 
                     if (count($copies))
