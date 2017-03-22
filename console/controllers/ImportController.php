@@ -24,7 +24,6 @@ use ejen\fias\common\models\FiasSocrbase;
 
 use ejen\fias\Module;
 use yii\base\Exception;
-use yii\BaseYii;
 use yii\console\Controller;
 use yii\db\ActiveRecord;
 use yii\db\Migration;
@@ -213,7 +212,16 @@ class ImportController extends Controller
             return false;
         }
 
-        return round($this->timeStamps[$name], 2);
+        $result = (string) round($this->timeStamps[$name], 2);
+
+        if (strpos($result, ".")) {
+            list($sec, $usec) = explode(".", $result);
+        } else {
+            $sec = (int) $result;
+            $usec = "00";
+        }
+
+        return preg_replace("/^(00:)+/", "", gmdate("H:i:s", $sec) . ".{$usec}");
     }
 
     /**
@@ -237,7 +245,7 @@ class ImportController extends Controller
 
         $this->ts('init');
 
-        $result = Module::getInstance()->getDb()->createCommand("SELECT * FROM system ORDER BY date DESC LIMIT 1")->query();
+        $result = Module::getInstance()->getDb()->createCommand("SELECT * FROM system ORDER BY version DESC LIMIT 1")->query();
         $rows = $result->readAll();
 
         $fullStatistic->ts_detect_current_version = $this->ts('detect_current_version', 'init');
@@ -254,6 +262,7 @@ class ImportController extends Controller
 
         $this->stdout("Загрузка версий ФИАС\n");
         $client = new \SoapClient('http://fias.nalog.ru/WebServices/Public/DownloadService.asmx?WSDL');
+        /** @noinspection PhpUndefinedMethodInspection */
         $result = $client->GetAllDownloadFileInfo();
 
         if (!$result) {
