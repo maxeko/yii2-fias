@@ -262,8 +262,13 @@ class ImportController extends Controller
 
         $this->stdout("Загрузка версий ФИАС\n");
         $client = new \SoapClient('http://fias.nalog.ru/WebServices/Public/DownloadService.asmx?WSDL');
-        /** @noinspection PhpUndefinedMethodInspection */
-        $result = $client->GetAllDownloadFileInfo();
+
+        try {
+            /** @noinspection PhpUndefinedMethodInspection */
+            $result = $client->GetAllDownloadFileInfo();
+        } catch (\SoapFault $exception) {
+            $this->stderr("Ошибка Soap сервиса ФИАС ({$exception->getMessage()})");
+        }
 
         if (!$result) {
             $this->stderr("Не удалось загрузить версии\n");
@@ -397,6 +402,7 @@ class ImportController extends Controller
 
                     if (!$db) {
                         $this->stderr("Не удалось открыть\n");
+                        dbase_close($db);
                         continue;
                     }
 
@@ -411,6 +417,7 @@ class ImportController extends Controller
 
                     if ($modelClass === null) {
                         $this->stderr("Обработчик не определён\n");
+                        dbase_close($db);
                         continue;
                     }
 
@@ -425,6 +432,7 @@ class ImportController extends Controller
 
                     if (!count($primaries)) {
                         $this->stdout("В структуре таблицы \"{$modelClass::tableName()}\" не определены первичные ключи\n");
+                        dbase_close($db);
                         continue;
                     }
 
@@ -615,6 +623,7 @@ class ImportController extends Controller
         }
 
         $fullStatistic->subextracts = $this->ts('sub_extracts_done', 'sub_extracts_init');
+        $fullStatistic->extractAll = $this->ts('extract_all', 'init');
 
         $CsvFiles = scandir($extractDestinationFolder);
         $CsvFilesCount = count($CsvFiles);
@@ -820,8 +829,7 @@ class ImportController extends Controller
         $fullStatistic->process_done = $this->ts('csv_process_done', 'csv_process_init');
         $fullStatistic->done = $this->ts('done', 'init');
 
-        $extracted = $fullStatistic->extract + $fullStatistic->subextracts;
-        $this->stdout("\nИмпорт завершен за {$fullStatistic->done} сек. (распаковка архивов: {$extracted} сек., импорт: {$fullStatistic->process_done} сек.)\n");
+        $this->stdout("\nИмпорт завершен за {$fullStatistic->done} сек. (распаковка архивов: {$fullStatistic->extractAll} сек., импорт: {$fullStatistic->process_done} сек.)\n");
 
         foreach ($fullStatistic->tables as $name => $table)
         {
@@ -945,7 +953,7 @@ class ImportController extends Controller
     /**
      * Удалить записи с дублирующимся PK
      */
-    public function actionRemoveDoublicates()
+    public function actionRemoveDuplicates()
     {
         $migration = new Migration();
         $migration->db = Module::getInstance()->getDb();
@@ -962,6 +970,4 @@ class ImportController extends Controller
         // заменяем старую таблицу с объектами адресации таблицей без дублей
         $migration->execute("ALTER TABLE {$houseCopyTable} RENAME TO {$houseTable}");
     }
-
-
 }
