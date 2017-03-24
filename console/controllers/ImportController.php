@@ -305,8 +305,8 @@ class ImportController extends Controller
                 $this->ts('version_processing_init');
                 $fullStatistic->ts_processing_versions[] = $ts = new \stdClass();
 
-                $remoteFileName = basename($version->FiasDeltaDbfUrl);
-                $localFilePath = "/tmp/{$remoteFileName}";
+                $dbFileName = basename($version->FiasDeltaDbfUrl);
+                $localFilePath = "/tmp/{$dbFileName}";
 
                 $headers = get_headers($version->FiasDeltaDbfUrl, 1);
 
@@ -390,23 +390,30 @@ class ImportController extends Controller
 
                 for ($fileIndex = 2; $fileIndex < $dbfFilesCount; $fileIndex++)
                 {
-                    $remoteFileName = "$destination/${dbfFiles[$fileIndex]}";
-
-                    $this->stdout("\n{$remoteFileName}\n");
-
                     if (strpos(strtolower($dbfFiles[$fileIndex]), '.dbf') != strlen($dbfFiles[$fileIndex]) - 4) {
                         continue;
                     }
 
-                    $db = @\dbase_open($remoteFileName, 0);
+                    $dbFileName = "$destination/${dbfFiles[$fileIndex]}";
 
-                    if (!$db) {
-                        $this->stderr("Не удалось открыть\n");
-                        dbase_close($db);
+                    $this->stdout("\n{$dbFileName}\n");
+
+                    if (strpos(strtolower($dbfFiles[$fileIndex]), 'nordoc') === 0) {
+                        $this->stdout("Исключён из обработки");
+                        // потому, что dbase_open не может открыть эти файлы и падает с ошибкой
+                        // при этом функция не закрывает файловый дескриптор, что может привести
+                        // PHP к выходу за лимит открытых дескрипторов и прекращению работы всего скрипта
                         continue;
                     }
 
-                    /* @var \yii\db\ActiveRecord $model */
+                    $db = @dbase_open($dbFileName, 0);
+
+                    // в зависимости от версии dbase может возвращать либо int, либо resource
+                    if (!is_integer($db) && !is_resource($db)) {
+                        $this->stderr("Не удалось открыть\n");
+                        continue;
+                    }
+
                     $modelClass = null;
                     foreach ($this->classMap as $name => $className) {
                         if (strpos(strtolower($dbfFiles[$fileIndex]), $name) !== false) {
