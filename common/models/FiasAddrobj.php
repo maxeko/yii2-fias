@@ -207,7 +207,7 @@ class FiasAddrobj extends ActiveRecord
         if (empty($this->fulltext_search)) {
             $parts = [
                 !empty($this->parentguid) ? (($parent = $this->parent) ? $parent->getFulltextSearchIndexValue() : '') : '',
-                $this->formalname . " " . $this->shortname
+                trim($this->formalname) . " " . trim($this->shortname)
             ];
             $parts = array_filter($parts);
             $this->fulltext_search = join(', ', $parts);
