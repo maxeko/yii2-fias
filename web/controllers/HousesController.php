@@ -4,8 +4,6 @@ namespace ejen\fias\web\controllers;
 
 use ejen\fias\common\models\FiasHouse;
 use ejen\fias\web\models\HousesSearchForm;
-use startuplab\helpers\ArrayHelper;
-use yii\data\ActiveDataProvider;
 use yii\web\BadRequestHttpException;
 use yii\web\Controller;
 use yii\web\Response;
