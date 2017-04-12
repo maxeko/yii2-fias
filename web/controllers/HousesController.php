@@ -2,6 +2,7 @@
 
 namespace ejen\fias\web\controllers;
 
+use yii\helpers\ArrayHelper;
 use ejen\fias\common\models\FiasHouse;
 use ejen\fias\web\models\HousesSearchForm;
 use yii\web\BadRequestHttpException;
