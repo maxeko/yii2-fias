@@ -160,7 +160,7 @@ class FiasHouse extends ActiveRecord
      */
     public function toString()
     {
-        return sprintf('%s, %s', FiasHelper::toFullString($this->addrobj->aoguid), $this->getName());
+        return sprintf('%s, %s', $this->addrobj->fulltext_search, $this->getName());
     }
 
     /**
