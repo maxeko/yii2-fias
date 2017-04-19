@@ -34,7 +34,7 @@ use \ejen\fias\Module;
  * @property boolean $gisgkh запись из "дельты" ГИС ЖКХ
  * @property boolean $copy запись является копией, не учитывать в выбораках
  *
- * @property FiasAddrobj $addrobj
+ * @property FiasAddrobj[] $addrobj
  *
  * @package ejen\fias\common\models
  */
@@ -105,11 +105,19 @@ class FiasHouse extends ActiveRecord
      *************************/
 
     /**
-     * @return \yii\db\ActiveQuery
+     * @return FiasAddrobjQuery
      */
     public function getAddrobj()
     {
-        return $this->hasOne(FiasAddrobj::className(), ['aoguid' => 'aoguid']);
+        return $this->hasMany(FiasAddrobj::className(), ['aoguid' => 'aoguid']);
+    }
+
+    /**
+     * @return FiasAddrobj|null
+     */
+    public function getActualAddrobj()
+    {
+        return $this->getAddrobj()->actual()->one();
     }
 
     /* *
@@ -160,7 +168,7 @@ class FiasHouse extends ActiveRecord
      */
     public function toString()
     {
-        return sprintf('%s, %s', $this->addrobj->fulltext_search, $this->getName());
+        return sprintf('%s, %s', $this->getActualAddrobj()->fulltext_search, $this->getName());
     }
 
     /**
@@ -201,7 +209,7 @@ class FiasHouse extends ActiveRecord
      */
     private function getAddrobjByLevel($aolevel = null)
     {
-        $addrobj = $this->addrobj;
+        $addrobj = $this->getActualAddrobj();
 
         while ($addrobj && $addrobj->aolevel != $aolevel) {
             $addrobj = $addrobj->parent;

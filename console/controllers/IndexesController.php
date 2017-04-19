@@ -85,7 +85,8 @@ class IndexesController extends Controller
         $logger->step('Индекс для быстрого поиска актуального адресообразующего элемента по GUID');
         $migration->createIndex('fias_aoguid_ix', FiasAddrobj::tableName(), [
             'aoguid',
-            'copy'
+            'copy',
+            'currstatus'
         ]);
         $logger->completed();
 
@@ -93,7 +94,8 @@ class IndexesController extends Controller
         $migration->createIndex('fias_aolevel_ix', FiasAddrobj::tableName(), [
             'aolevel',
             'formalname',
-            'copy'
+            'copy',
+            'currstatus'
         ]);
         $logger->completed();
 
@@ -101,7 +103,8 @@ class IndexesController extends Controller
         $migration->createIndex('fias_parentguid_ix', FiasAddrobj::tableName(), [
             'parentguid',
             'formalname',
-            'copy'
+            'copy',
+            'currstatus'
         ]);
         $logger->completed();
 

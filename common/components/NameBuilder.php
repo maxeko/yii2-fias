@@ -36,7 +36,7 @@ class NameBuilder extends Component
             /* @var FiasHouse $fiasObject */
 
             /* @var FiasAddrobj $parent */
-            $parent = $fiasObject->addrobj;
+            $parent = $fiasObject->getActualAddrobj();
             $name = $fiasObject->housenum;
 
         } elseif (is_a($fiasObject, FiasAddrobj::className())) {

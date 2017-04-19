@@ -115,11 +115,20 @@ class FiasAddrobj extends ActiveRecord
 
     /**
      * Объекты адресации (дома), ссылаюшиеся на данный адресообразующий элемент
-     * @return \yii\db\ActiveQuery
+     * @return FiasHouseQuery
      */
     public function getHouses()
     {
         return $this->hasMany(FiasHouse::className(), ['aoguid' => 'aoguid']);
+    }
+
+    /**
+     * Объекты адресации (дома), ссылаюшиеся на данный адресообразующий элемент (только актуальные)
+     * @return FiasHouseQuery
+     */
+    public function getActualHouses()
+    {
+        return $this->getHouses()->actual();
     }
 
     /**

@@ -69,7 +69,6 @@ class HousesController extends Controller
             return $responseData;
         }
 
-        //return $dataProvider->query->createCommand()->rawSql;
         return json_encode($responseData, JSON_UNESCAPED_UNICODE);
     }
 }

@@ -38,13 +38,11 @@ class FiasAddrobjQuery extends ActiveQuery
     public function actual($alias = null)
     {
         $alias = ($alias ? "{$alias}." : "");
-        /*
+
         // http://wiki.gis-lab.info/w/%D0%A4%D0%98%D0%90%D0%A1#.D0.A1.D1.82.D0.B0.D1.82.D1.83.D1.81_.D0.B0.D0.BA.D1.82.D1.83.D0.B0.D0.BB.D1.8C.D0.BD.D0.BE.D1.81.D1.82.D0.B8
-        // закомментировано потому что в данный момент работа ведётся с базой без иторических запией
-        // убирать пока не надо
         $this->andWhere([
             $alias . "currstatus" => 0
-        ]);*/
+        ]);
         $this->andWhere([
             $alias . "copy" => false
         ]);
