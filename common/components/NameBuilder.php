@@ -36,14 +36,14 @@ class NameBuilder extends Component
             /* @var FiasHouse $fiasObject */
 
             /* @var FiasAddrobj $parent */
-            $parent = $fiasObject->getActualAddrobj();
+            $parent = $fiasObject->getAddrobj()->last()->one();
             $name = $fiasObject->housenum;
 
         } elseif (is_a($fiasObject, FiasAddrobj::className())) {
             /* @var FiasAddrobj $fiasObject */
 
             /* @var FiasAddrobj $parent */
-            $parent = $fiasObject->getParent()->actual()->one();
+            $parent = $fiasObject->getParent()->last()->one();
             $name = $fiasObject->getName();
 
         }

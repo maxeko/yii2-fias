@@ -52,7 +52,7 @@ class IndexesController extends Controller
     }
 
     /**
-     * Построитьт все индексы
+     * Построить все индексы
      */
     public function actionBuildAll()
     {
@@ -67,15 +67,28 @@ class IndexesController extends Controller
         $logger->completed();
 
         $logger->step('Индекс для поиска объекта адресации по GUID');
-        $migration->execute("CREATE INDEX \"fias_house_houseguid_enddate\" ON \"fias_house\" (\"houseguid\", \"enddate\", \"copy\")");
+        $migration->createIndex('fias_house_houseguid_enddate_copy_ix', FiasHouse::tableName(), [
+            "houseguid",
+            "enddate",
+            "copy"
+        ]);
         $logger->completed();
 
         $logger->step('Индекс для поиска объектов адресации по адресообразующему элементу и "номеру дома"');
-        $migration->execute("CREATE INDEX \"fias_house_housenum_aoguid_enddate\" ON \"fias_house\" (\"housenum\", \"aoguid\", \"enddate\", \"copy\")");
+        $migration->createIndex('fias_house_housenum_aoguid_enddate_copy_ix', FiasHouse::tableName(), [
+            "housenum",
+            "aoguid",
+            "enddate",
+            "copy"
+        ]);
         $logger->completed();
 
         $logger->step('Индекс для поиска объектов адресации по адресообразующему элементу');
-        $migration->execute("CREATE INDEX \"fias_house_aoguid_enddate\" ON \"fias_house\" (\"aoguid\", \"enddate\", \"copy\")");
+        $migration->createIndex('fias_house_aoguid_enddate_copy_ix', FiasHouse::tableName(), [
+            "aoguid",
+            "enddate",
+            "copy"
+        ]);
         $logger->completed();
 
         $logger->step('Первичный ключ для таблицы адресообразующих элементов');
@@ -115,6 +128,7 @@ class IndexesController extends Controller
 
     /**
      * Удалить все исторические записи
+     * @deprecated
      */
     public function actionRemoveHistory()
     {

@@ -38,6 +38,31 @@ class FiasHouseQuery extends ActiveQuery
         $alias = empty($alias) ? '' : $alias . '.';
 
         $this->andWhere(['>', "{$alias}enddate", 'NOW()']);
+
+        return $this;
+    }
+
+    /**
+     * Выбрать последнюю запись в хронологической цепочке
+     * @param string $alias
+     * @return FiasHouse
+     */
+    public function last($alias = null)
+    {
+        $alias = empty($alias) ? '' : $alias . '.';
+
+        return $this->orderBy(["{$alias}enddate" => SORT_DESC])->one();
+    }
+
+    /**
+     * Выбрать только записи не помеченные как "копии" (в приоритете записи добавленные в ГИС)
+     * @param string $alias
+     * @return $this
+     */
+    public function validForGisgkh($alias = null)
+    {
+        $alias = empty($alias) ? '' : $alias . '.';
+
         $this->andWhere(["{$alias}copy" => false]);
 
         return $this;

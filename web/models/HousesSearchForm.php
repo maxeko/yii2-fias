@@ -43,6 +43,7 @@ class HousesSearchForm extends Model
     public function query()
     {
         return FiasHouse::find()
+            ->validForGisgkh()
             ->actual()
             ->byAoguid($this->aoguid)
             ->orderBy([

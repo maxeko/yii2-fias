@@ -46,7 +46,7 @@ class AddrobjSearchForm extends Model
      */
     public function query()
     {
-        $query = FiasAddrobj::find()->actual()->withChildHouses();
+        $query = FiasAddrobj::find()->validForGisgkh()->actual()->withChildHouses();
 
         if ($this->regionCode) {
             $query->byRegionCode($this->regionCode);

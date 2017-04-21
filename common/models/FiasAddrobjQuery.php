@@ -40,18 +40,37 @@ class FiasAddrobjQuery extends ActiveQuery
         $alias = ($alias ? "{$alias}." : "");
 
         // http://wiki.gis-lab.info/w/%D0%A4%D0%98%D0%90%D0%A1#.D0.A1.D1.82.D0.B0.D1.82.D1.83.D1.81_.D0.B0.D0.BA.D1.82.D1.83.D0.B0.D0.BB.D1.8C.D0.BD.D0.BE.D1.81.D1.82.D0.B8
-        $this->andWhere([
-            $alias . "currstatus" => 0
-        ]);
-        $this->andWhere([
-            $alias . "copy" => false
-        ]);
+        $this->andWhere([$alias . "currstatus" => 0]);
+
         return $this;
     }
 
-    public function history()
+    /**
+     * Получить только последне адреса в исторической цепочке
+     * @param string $alias
+     * @return $this
+     */
+    public function last($alias = null)
     {
+        $alias = ($alias ? "{$alias}." : "");
 
+        $this->andWhere("({$alias}currstatus = 0 OR {$alias}nextid IS NULL OR {$alias}nextid = '')");
+
+        return $this;
+    }
+
+    /**
+     * Выбрать только записи не помеченные как "копии" (в приоритете записи добавленные в ГИС)
+     * @param string $alias
+     * @return $this
+     */
+    public function validForGisgkh($alias = null)
+    {
+        $alias = empty($alias) ? '' : $alias . '.';
+
+        $this->andWhere(["{$alias}copy" => false]);
+
+        return $this;
     }
 
     /**

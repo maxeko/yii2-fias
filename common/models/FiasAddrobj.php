@@ -49,7 +49,7 @@ use \ejen\fias\Module;
  * @property integer $houses_count количество адресных объектов в подчинении
  *
  * @property FiasHouse[] $houses
- * @property FiasAddrobj $parent
+ * @property FiasAddrobj[] $parent
  * @property FiasAddrobj[] $children
  *
  * @package ejen\fias\common\models
@@ -132,12 +132,12 @@ class FiasAddrobj extends ActiveRecord
     }
 
     /**
-     * Родительский адресообразуюший элемент (актуальная запись)
+     * Родительский адресообразуюший элемент (все исторические записи)
      * @return FiasAddrobjQuery
      */
     public function getParent()
     {
-        return $this->hasOne(static::className(), ['aoguid' => 'parentguid']);
+        return $this->hasMany(static::className(), ['aoguid' => 'parentguid']);
     }
 
     /**
@@ -215,7 +215,7 @@ class FiasAddrobj extends ActiveRecord
     {
         if (empty($this->fulltext_search)) {
             $parts = [
-                !empty($this->parentguid) ? (($parent = $this->parent) ? $parent->getFulltextSearchIndexValue() : '') : '',
+                !empty($this->parentguid) ? (($parent = $this->getParent()->last()->one()) ? $parent->getFulltextSearchIndexValue() : '') : '',
                 trim($this->formalname) . " " . trim($this->shortname)
             ];
             $parts = array_filter($parts);
@@ -608,7 +608,7 @@ class FiasAddrobj extends ActiveRecord
     public static function showChildren($parentGuid, $formalname = null, $count = 100)
     {
         $query = FiasAddrobj::find()
-            ->actual()
+            ->last()
             ->byParentGuid($parentGuid)
             ->orderByName();
 
@@ -681,7 +681,7 @@ class FiasAddrobj extends ActiveRecord
                 (fias_addrobj.formalname || ' ' || fias_addrobj.shortname) AS title,
                 fias_addrobj.aoguid AS id
             ")
-            ->actual();
+            ->last();
 
         if (!empty($data['aolevel'])) {
             $addressesQuery->byLevel($data['aolevel']);

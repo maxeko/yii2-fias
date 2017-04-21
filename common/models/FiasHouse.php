@@ -133,13 +133,13 @@ class FiasHouse extends ActiveRecord
         $eststatusPrefix = '';
         switch ($this->eststatus) {
             case static::ESTSTATUS_GROUNDS:
-                $eststatusPrefix = 'Владение ';
+                $eststatusPrefix = 'владение ';
                 break;
             case static::ESTSTATUS_HOUSE:
-                $eststatusPrefix = 'Дом ';
+                $eststatusPrefix = 'дом ';
                 break;
             case static::ESTSTATUS_HOUSE_AND_GROUNDS:
-                $eststatusPrefix = 'Домовладение';
+                $eststatusPrefix = 'домовладение ';
                 break;
         }
 
@@ -168,7 +168,7 @@ class FiasHouse extends ActiveRecord
      */
     public function toString()
     {
-        return sprintf('%s, %s', $this->getActualAddrobj()->fulltext_search, $this->getName());
+        return sprintf('%s, %s', $this->getAddrobj()->last()->one()->fulltext_search, $this->getName());
     }
 
     /**
@@ -209,10 +209,10 @@ class FiasHouse extends ActiveRecord
      */
     private function getAddrobjByLevel($aolevel = null)
     {
-        $addrobj = $this->getActualAddrobj();
+        $addrobj = $this->getAddrobj()->last()->one();
 
         while ($addrobj && $addrobj->aolevel != $aolevel) {
-            $addrobj = $addrobj->parent;
+            $addrobj = $addrobj->getParent()->last()->one();
         }
 
         return $addrobj;
