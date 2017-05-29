@@ -89,6 +89,7 @@ class ImportController extends Controller
         $this->classMap = [
             'actstat'    => FiasActstat::className(),
             'addrobj'    => FiasAddrobj::className(),
+            'addrob'    => FiasAddrobj::className(),
             'centerst'   => FiasCenterst::className(),
             'curentst'   => FiasCurentst::className(),
             'eststat'    => FiasEststat::className(),
@@ -539,6 +540,14 @@ class ImportController extends Controller
                 $this->stdout("Запись об импорте версии была добавлена в таблицу \"system\"\n");
 
                 BaseFileHelper::removeDirectory($destination);
+
+                /**
+                 * Нужно накатывать только по одной дельте
+                 * за запуск. Потому, что если дельт будет
+                 * много, обновление может занять несколько
+                 * дней
+                 */
+                break;
             }
         }
 
