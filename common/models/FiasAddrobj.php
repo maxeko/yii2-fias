@@ -88,7 +88,7 @@ class FiasAddrobj extends ActiveRecord
      */
     public static function tableName()
     {
-        return '{{%fias_addrobj}}';
+        return 'fias_addrobj';
     }
 
     /**

@@ -76,7 +76,7 @@ class FiasHouse extends ActiveRecord
      */
     public static function tableName()
     {
-        return '{{%fias_house}}';
+        return 'fias_house';
     }
 
     /**

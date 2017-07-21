@@ -97,4 +97,22 @@ class FiasHouseQuery extends ActiveQuery
 
         return $this;
     }
+
+    /**
+     * По коду региона
+     * @param integer|string $code код региона
+     * @param string $addrobjAlias alias к таблице addrobj, если не указан то будет сделан inner join
+     * @return $this
+     */
+    public function byRegionCode($code, $addrobjAlias = null)
+    {
+        if (empty($addrobjAlias)) {
+            $addrobjAlias = FiasAddrobj::tableName();
+            $this->joinWith("addrobj {$addrobjAlias}", false, 'INNER JOIN');
+        }
+
+        return $this->andWhere([
+            "{$addrobjAlias}.regioncode" => (string) $code
+        ]);
+    }
 }
