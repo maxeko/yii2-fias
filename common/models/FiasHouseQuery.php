@@ -63,7 +63,7 @@ class FiasHouseQuery extends ActiveQuery
     {
         $alias = empty($alias) ? '' : $alias . '.';
 
-        $this->andWhere(["{$alias}fias_houseguid" => false]);
+        $this->andWhere(["{$alias}fias_houseguid" => null]);
 
         return $this;
     }
