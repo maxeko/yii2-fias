@@ -48,6 +48,9 @@ use \ejen\fias\Module;
  * @property string $fulltext_search полное наименование адресообразующего элемента для текстового поиска
  * @property integer $houses_count количество адресных объектов в подчинении
  *
+ * @property string $fias_addrobjguid Для строк из "Реестра добавленных адресов ГИС ЖКХ". GUID соответствующей записи ФИАС (если есть)
+ * @property string $fias_addrobjid Для строк из "Реестра добавленных адресов ГИС ЖКХ". ID соответствующей записи ФИАС (если есть)
+ *
  * @property FiasHouse[] $houses
  * @property FiasAddrobj[] $parent
  * @property FiasAddrobj[] $children

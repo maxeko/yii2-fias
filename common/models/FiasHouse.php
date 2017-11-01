@@ -34,6 +34,9 @@ use \ejen\fias\Module;
  * @property boolean $gisgkh запись из "дельты" ГИС ЖКХ
  * @property boolean $copy запись является копией, не учитывать в выбораках
  *
+ * @property string $fias_houseguid Для строк из "Реестра добавленных адресов ГИС ЖКХ". GUID соответствующей записи ФИАС (если есть)
+ * @property string $fias_houseid Для строк из "Реестра добавленных адресов ГИС ЖКХ". ID соответствующей записи ФИАС (если есть)
+ *
  * @property FiasAddrobj[] $addrobj
  *
  * @package ejen\fias\common\models
