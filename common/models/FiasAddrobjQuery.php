@@ -68,7 +68,7 @@ class FiasAddrobjQuery extends ActiveQuery
     {
         $alias = empty($alias) ? '' : $alias . '.';
 
-        $this->andWhere(["{$alias}fias_addrobjguid" => null]);
+        $this->andWhere("({$alias}fias_addrobjid IS NULL OR {$alias}fias_addrobjid = '')");
 
         return $this;
     }

@@ -63,7 +63,22 @@ class FiasHouseQuery extends ActiveQuery
     {
         $alias = empty($alias) ? '' : $alias . '.';
 
-        $this->andWhere(["{$alias}fias_houseguid" => null]);
+        $this->andWhere("({$alias}fias_houseid IS NULL OR {$alias}fias_houseid = '')");
+
+        return $this;
+    }
+
+    /**
+     * Выбрать с заданным ID
+     * @param string $guid
+     * @param string|null $alias
+     * @return $this
+     */
+    public function byId($guid, $alias = null)
+    {
+        $alias = empty($alias) ? '' : $alias . '.';
+
+        $this->andWhere(["{$alias}houseid" => strtolower($guid)]);
 
         return $this;
     }
