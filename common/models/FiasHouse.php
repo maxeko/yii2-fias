@@ -156,9 +156,9 @@ class FiasHouse extends ActiveRecord
                 break;
         }
         $parts = [
-            $eststatusPrefix . trim($this->housenum), // дом (владение, домовладение)
-            $this->buildnum ? "корп. " . trim($this->buildnum) : false, // корпус
-            $this->strucnum ? $strstatusPrefix . trim($this->strucnum) : false // строение (сооружение, литер)
+            trim($eststatusPrefix . " " . trim($this->housenum)), // дом (владение, домовладение)
+            $this->buildnum ? trim("корп. " . trim($this->buildnum)) : false, // корпус
+            $this->strucnum ? trim($strstatusPrefix . " " . trim($this->strucnum)) : false // строение (сооружение, литер)
         ];
         $parts = array_filter($parts);
         return join(', ', $parts);
