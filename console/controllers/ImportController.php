@@ -160,6 +160,12 @@ class ImportController extends Controller
                 null,
                 "fias_houseid",
                 "fias_houseguid",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
                 "gisgkh" // дополнительная колонка
             ]
         ];
@@ -789,7 +795,7 @@ class ImportController extends Controller
                 }
 
                 // данные для дополнительной колонки "gisgkh"
-                $row[] = 'TRUE';
+                $row[] = true;
 
                 $rows[] = $row;
                 $rowsCount++;
@@ -810,7 +816,7 @@ class ImportController extends Controller
 
                     if (count($copies))
                     {
-                        $marked += $db->createCommand()->update($model::tableName(), [ 'copy' => 'TRUE' ], ['in', array_values($copyIndexes), $copies])->execute();
+                        $marked += $db->createCommand()->update($model::tableName(), [ 'copy' => true ], ['in', array_values($copyIndexes), $copies])->execute();
                     }
 
                     $time = $this->ts('process_done', 'process_init');
