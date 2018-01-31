@@ -29,6 +29,9 @@ use yii\db\ActiveRecord;
 use yii\db\Migration;
 use yii\helpers\BaseFileHelper;
 
+/**
+ * Функции импорта данных в справочник ФИАС из обменных форматов
+ */
 class ImportController extends Controller
 {
     /**
@@ -84,12 +87,15 @@ class ImportController extends Controller
 
     private $timeStamps = [];
 
+    /**
+     * @inheritdoc
+     */
     function __construct($id, Module $module, array $config = [])
     {
         $this->classMap = [
             'actstat'    => FiasActstat::className(),
             'addrobj'    => FiasAddrobj::className(),
-            'addrob'    => FiasAddrobj::className(),
+            'addrob'     => FiasAddrobj::className(),
             'centerst'   => FiasCenterst::className(),
             'curentst'   => FiasCurentst::className(),
             'eststat'    => FiasEststat::className(),
@@ -106,7 +112,8 @@ class ImportController extends Controller
             'dhouse'     => FiasDhouse::className(),
             'dhousint'   => FiasDhousint::className(),
             'dlandmrk'   => FiasDlandmrk::className(),
-            'dnordoc'    => FiasDnordoc::className()];
+            'dnordoc'    => FiasDnordoc::className()
+        ];
 
         $this->gisColumns = [
             FiasAddrobj::tableName() => [
@@ -176,25 +183,31 @@ class ImportController extends Controller
                 'start_dtae' => 'startdate',
                 'fias_update_date' => 'updatedate',
                 'start_date' => 'startdate',
-                'end_date' => 'enddate'],
+                'end_date' => 'enddate'
+            ],
             FiasHouse::tableName() => [
                 'fias_update_date' => 'updatedate',
                 'start_date' => 'startdate',
-                'end_date' => 'enddate']
+                'end_date' => 'enddate'
+            ]
         ];
 
         $this->gisCopies = [
             FiasAddrobj::tableName() => [
                 'fias_addrobjid' => 'aoid',
-                'fias_addrobjguid' => 'aoguid'],
+                'fias_addrobjguid' => 'aoguid'
+            ],
             FiasHouse::tableName() => [
                 'fias_houseid' => 'houseid',
-                'fias_houseguid' => 'houseguid']
+                'fias_houseguid' => 'houseguid'
+            ]
         ];
 
         $this->gisDataProcessors = [
             FiasHouse::tableName() => [
-                'housenum' => function($value){ return strlen($value) > 20 ? false : $value; }
+                'housenum' => function($value){
+                    return strlen($value) > 20 ? false : $value;
+                }
             ]
         ];
 
