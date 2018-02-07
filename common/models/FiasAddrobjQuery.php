@@ -140,6 +140,31 @@ class FiasAddrobjQuery extends ActiveQuery
     }
 
     /**
+     * Поиск по полному названию, каждый элемент ищется с полным вхождением
+     * @param string $q строка запроса
+     * @param string|null $alias
+     * @return $this
+     */
+    public function byFullNameStrictParts($q, $alias = null)
+    {
+        $alias = ($alias ? "{$alias}." : "");
+
+        $parts = mb_split('[\s,.]+', $q);
+
+        foreach ($parts as $part) {
+            $this->andWhere([
+                'or',
+                ['like', "upper({$alias}fulltext_search COLLATE \"ru_RU\")", mb_strtoupper($part) . " %", false],
+                ['like', "upper({$alias}fulltext_search COLLATE \"ru_RU\")", "% " . mb_strtoupper($part) . " %", false],
+                ['like', "upper({$alias}fulltext_search COLLATE \"ru_RU\")", "% " . mb_strtoupper($part), false],
+                ['like', "upper({$alias}fulltext_search COLLATE \"ru_RU\")", "% " . mb_strtoupper($part) . ".%", false],
+            ]);
+        }
+
+        return $this;
+    }
+
+    /**
      * Выбрать адресообразующие элементы заданного уровня
      * @param string $aolevel уровень адресообразующего элемента (см. константы `FiasAddrobj::AOLEVEL_*`)
      * @param string|null $alias

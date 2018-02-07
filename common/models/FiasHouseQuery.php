@@ -112,4 +112,43 @@ class FiasHouseQuery extends ActiveQuery
 
         return $this;
     }
+
+    /**
+     * По номеру дома
+     * @param string $housenum
+     * @param string $alias
+     * @return $this
+     */
+    public function byHousenum($housenum, $alias = null)
+    {
+        $alias = $alias ?: FiasHouse::tableName();
+
+        return $this->andWhere(["upper($alias.housenum COLLATE \"ru_RU\")" => mb_strtoupper($housenum)]);
+    }
+
+    /**
+     * По номеру строения
+     * @param string $buildnum
+     * @param string $alias
+     * @return $this
+     */
+    public function byBuildnum($buildnum, $alias = null)
+    {
+        $alias = $alias ?: FiasHouse::tableName();
+
+        return $this->andWhere(["upper($alias.buildnum COLLATE \"ru_RU\")" => mb_strtoupper($buildnum)]);
+    }
+
+    /**
+     * По номеру корпуса
+     * @param string $strucnum
+     * @param string $alias
+     * @return $this
+     */
+    public function byStrucnum($strucnum, $alias = null)
+    {
+        $alias = $alias ?: FiasHouse::tableName();
+
+        return $this->andWhere(["upper($alias.strucnum COLLATE \"ru_RU\")" => mb_strtoupper($strucnum)]);
+    }
 }
