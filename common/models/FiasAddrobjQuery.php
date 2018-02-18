@@ -158,6 +158,7 @@ class FiasAddrobjQuery extends ActiveQuery
                 ['like', "upper({$alias}fulltext_search COLLATE \"ru_RU\")", "% " . mb_strtoupper($part) . " %", false],
                 ['like', "upper({$alias}fulltext_search COLLATE \"ru_RU\")", "% " . mb_strtoupper($part), false],
                 ['like', "upper({$alias}fulltext_search COLLATE \"ru_RU\")", "% " . mb_strtoupper($part) . ".%", false],
+                ['like', "upper({$alias}fulltext_search COLLATE \"ru_RU\")", "% " . mb_strtoupper($part) . ",%", false],
             ]);
         }
 
