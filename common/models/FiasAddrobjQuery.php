@@ -31,7 +31,6 @@ class FiasAddrobjQuery extends ActiveQuery
      * Только актуальные записи (не исторические, и не копии)
      * Проверка
      * - по полю currstatus == 0 (статус актуальности КЛАДР4)
-     * - по полю copy (copy == false, не является копией) -- отсечение ФИАС-овских объектов там где есть ГИС-овские
      * @param string|null $alias
      * @return $this
      */

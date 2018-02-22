@@ -5,35 +5,65 @@ namespace ejen\fias\console\controllers;
 use yii\console\Controller;
 use ejen\fias\Module;
 
+/**
+ * Работа с миграциями модуля
+ *
+ * Применить все миграции:
+ *
+ * ```
+ * ./yii fias/migrate
+ * ```
+ *
+ * Откатить все миграции:
+ *
+ * ```
+ * ./yii fias/migrate/down
+ * ```
+ *
+ * Создать новую миграцию:
+ *
+ * ```
+ * ./yii fias/migrate/create
+ * ```
+ */
 class MigrateController extends Controller
 {
+    /**
+     * Применить миграции модуля
+     */
     public function actionIndex()
     {
-        exec(
-            'php ' . \Yii::$app->basePath . '/yii migrate' .
-            ' --interactive=0' .
-            ' --migrationPath=' . Module::getInstance()->basePath . '/console/migrations' .
-            ' --db=' . Module::getInstance()->db,
-            $output
-        );
-
-        array_walk($output, function ($line) {
-            echo sprintf("%s\n", $line);
-        });
+        $this->run('/migrate', [
+            'interactive' => false,
+            'migrationPath' => Module::getInstance()->basePath . '/console/migrations',
+            'db' => Module::getInstance()->db
+        ]);
     }
 
-    public function actionDown()
+    /**
+     * Откатить миграции модуля
+     * @param int $count
+     */
+    public function actionDown($count = 100)
     {
-        exec(
-            'php ' . \Yii::$app->basePath . '/yii migrate/down' .
-            ' --interactive=0' .
-            ' --migrationPath=' . Module::getInstance()->basePath . '/console/migrations' .
-            ' --db=' . Module::getInstance()->db . ' 100',
-            $output
-        );
+        $this->run('/migrate/down', [
+            'interactive' => false,
+            'migrationPath' => Module::getInstance()->basePath . '/console/migrations',
+            'db' => Module::getInstance()->db,
+            $count
+        ]);
+    }
 
-        array_walk($output, function ($line) {
-            echo sprintf("%s\n", $line);
-        });
+    /**
+     * Создать миграцию для модуля
+     * @param string $migrationName
+     */
+    public function actionCreate($migrationName)
+    {
+        $this->run('/migrate/create', [
+            'interactive' => false,
+            'migrationPath' => Module::getInstance()->basePath . '/console/migrations',
+            $migrationName
+        ]);
     }
 }
