@@ -136,13 +136,13 @@ class FiasHouse extends ActiveRecord
         $eststatusPrefix = '';
         switch ($this->eststatus) {
             case static::ESTSTATUS_GROUNDS:
-                $eststatusPrefix = 'владение ';
+                $eststatusPrefix = 'владение';
                 break;
             case static::ESTSTATUS_HOUSE:
-                $eststatusPrefix = 'дом ';
+                $eststatusPrefix = 'дом';
                 break;
             case static::ESTSTATUS_HOUSE_AND_GROUNDS:
-                $eststatusPrefix = 'домовладение ';
+                $eststatusPrefix = 'домовладение';
                 break;
         }
 
