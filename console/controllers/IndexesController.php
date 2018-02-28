@@ -51,6 +51,53 @@ class IndexesController extends Controller
         }
     }
 
+    public function actionBuild()
+    {
+        $this->runAction("drop-all");
+
+        $logger = Module::getInstance()->actionLogger;
+        $logger->action("Построение индексов для базы ФИАС", 3);
+
+        $migration = new Migration();
+        $migration->db = Module::getInstance()->getDb();
+
+        $logger->step("Исключение дублей в таблице адресов");
+        $migration->execute("CREATE TABLE fias_house1 AS SELECT DISTINCT ON (houseid) * FROM fias_house;");
+        $migration->dropTable("fias_house");
+        $migration->renameTable("fias_house1", "fias_house");
+        $logger->completed();
+
+        $logger->step("Установка признака актуальности для адресов");
+        $migration->createIndex('fias_house_enddate_ix', FiasHouse::tableName(), ["enddate"]);
+        $migration->update("fias_house", ["actual"  => false], [
+            "and",
+            ["<", "enddate", 'NOW()'],
+            ["gisgkh" => false]
+        ]);
+        $migration->dropIndex('fias_house_enddate_ix', FiasHouse::tableName());
+        $logger->completed();
+
+        $logger->step("Первичный ключ для таблицы объектов адресации");
+        $migration->addPrimaryKey("fias_house_houseid_pk", FiasHouse::tableName(), ["houseid"]);
+        $logger->completed();
+
+        $logger->step("Первичный ключ для таблицы адресообразующих элементов");
+        $migration->addPrimaryKey("fias_addrobj_aoid_pk", FiasAddrobj::tableName(), ["aoid"]);
+        $logger->completed();
+
+        $logger->step('Обновление кэша "количество подчинённых адресов"');
+        $migration->execute(<<<SQL
+UPDATE fias_addrobj SET houses_count = t.count FROM (
+    SELECT aoguid, count(houseid) AS count
+    FROM fias_house
+    WHERE actual = true
+    GROUP BY aoguid
+) AS t WHERE t.aoguid = fias_addrobj.aoguid;
+SQL
+        );
+        $logger->completed();
+    }
+
     /**
      * Построить все индексы
      */
@@ -229,10 +276,11 @@ class IndexesController extends Controller
 
         $migration->execute("
           UPDATE fias_addrobj SET houses_count = t.count FROM (
-            SELECT aoid, count(h.houseid) AS count
-            FROM fias_addrobj AS a INNER JOIN fias_house AS h ON h.aoguid = a.aoguid
-            GROUP BY a.aoid
-          ) AS t WHERE t.aoid = fias_addrobj.aoid;
+            SELECT aoguid, count(houseid) AS count
+            FROM fias_house
+            WHERE actual = true 
+            GROUP BY aoguid
+          ) AS t WHERE t.aoguid = fias_addrobj.aoguid;
         ");
     }
 

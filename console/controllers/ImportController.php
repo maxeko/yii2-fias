@@ -147,6 +147,7 @@ class ImportController extends Controller
                 "fias_addrobjid", // 27
                 "fias_addrobjguid", // 28
                 null, // 29 Источник данных: «1» – из РЗИС; «2» – из ФИАС
+                "gisgkh"
             ],
             FiasHouse::tableName() => [
                 "houseid", // 1
@@ -174,6 +175,7 @@ class ImportController extends Controller
                 null, // 23 Заполняется TRUE если дом используется в каком-либо договоре в ГИС ЖКХ, иначе – FALSE
                 null, // 24 Заполняется TRUE если дом используется в РАО, иначе FALSE
                 null, // 25 Источник данных: «1» – из РЗИС; «2» – из ФИАС
+                "gisgkh"
             ]
         ];
 
@@ -207,8 +209,16 @@ class ImportController extends Controller
             FiasHouse::tableName() => [
                 'housenum' => function ($value) {
                     return strlen($value) > 20 ? false : $value;
+                },
+                'actual' => function ($value) {
+                    return $value && ($value !== "f");
                 }
-            ]
+            ],
+            FiasAddrobj::tableName() => [
+                'actual' => function ($value) {
+                    return $value && ($value !== "f");
+                }
+            ],
         ];
 
         parent::__construct($id, $module, $config);
@@ -702,10 +712,10 @@ class ImportController extends Controller
             // данные для первичных ключей (для удаления дублей)
             $primariesValues = [];
 
-            if (empty($primaries)) {
-                Console::output("В структуре таблицы \"{$model::tableName()}\" не определены первичные ключи");
-                continue;
-            }
+//            if (empty($primaries)) {
+//                Console::output("В структуре таблицы \"{$model::tableName()}\" не определены первичные ключи");
+//                continue;
+//            }
 
             $primaries = array_keys($primaries);
 
@@ -785,10 +795,10 @@ class ImportController extends Controller
                 $eof = feof($fp) || $fileSize == ftell($fp);
 
                 if ($rowsCount % $this->batchSize == 0 || $eof) {
-                    if (count($primariesValues)) {
+                    //if (count($primariesValues)) {
                         // удаление дублирующихся записей, для последующей замены новыми
-                        $deleted += $db->createCommand()->delete($model::tableName(), $primariesValues)->execute();
-                    }
+                        //$deleted += $db->createCommand()->delete($model::tableName(), $primariesValues)->execute();
+                    //}
 
                     $inserted += $db->createCommand()->batchInsert(
                         $model::tableName(),
