@@ -224,7 +224,7 @@ class FiasAddrobj extends ActiveRecord
             ];
             $parts = array_filter($parts);
             $this->fulltext_search = join(', ', $parts);
-            $this->save();
+            $this->save(false, ["fulltext_search"]);
         }
 
         return $this->fulltext_search;

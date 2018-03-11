@@ -208,7 +208,7 @@ class ImportController extends Controller
         $this->gisDataProcessors = [
             FiasHouse::tableName() => [
                 'housenum' => function ($value) {
-                    return strlen($value) > 20 ? false : $value;
+                    return strlen($value) > 20 ? null : $value;
                 },
                 'actual' => function ($value) {
                     return $value && ($value !== "f");
@@ -767,7 +767,7 @@ class ImportController extends Controller
                         if (is_callable(@$this->gisDataProcessors[$model::tableName()][$column])) {
                             $value = call_user_func($this->gisDataProcessors[$model::tableName()][$column], $value);
 
-                            if ($value === false) {
+                            if ($value === null) {
                                 $std->skipped++;
                                 continue 2;
                             }
@@ -875,6 +875,7 @@ class ImportController extends Controller
         $classMap = [
             '/^.*DADDROBJ\.DBF$/'   => FiasDaddrobj::className(),
             '/^.*ADDROBJ\.DBF$/'    => FiasAddrobj::className(),
+            '/^.*ADDROB\d\d\.DBF$/' => FiasAddrobj::className(),
             '/^.*LANDMARK\.DBF$/'   => FiasLandmark::className(),
             '/^.*DHOUSE\.DBF$/'     => FiasDhouse::className(),
             '/^.*HOUSE\d\d\.DBF$/'  => FiasHouse::className(),
