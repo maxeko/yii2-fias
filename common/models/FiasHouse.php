@@ -32,10 +32,10 @@ use \ejen\fias\Module;
  * @property integer $counter Счетчик записей домов для КЛАДР 4
  *
  * @property boolean $gisgkh запись из "дельты" ГИС ЖКХ
- * @property boolean $copy запись является копией, не учитывать в выбораках
+ * @property boolean $actual false если адрес был деактуализирован (в ФИАС или при "выравнивании" справочника)
  *
- * @property string $fias_houseguid Для строк из "Реестра добавленных адресов ГИС ЖКХ". GUID соответствующей записи ФИАС (если есть)
- * @property string $fias_houseid Для строк из "Реестра добавленных адресов ГИС ЖКХ". ID соответствующей записи ФИАС (если есть)
+ * @property string $fias_houseguid Для строк из "Реестра добавленных адресов ГИС ЖКХ". Соотв-й GUID ФИАС (если есть)
+ * @property string $fias_houseid Для строк из "Реестра добавленных адресов ГИС ЖКХ". Соотв-й ФИАС ID (если есть)
  *
  * @property FiasAddrobj[] $addrobj
  *

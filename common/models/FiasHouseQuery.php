@@ -35,9 +35,9 @@ class FiasHouseQuery extends ActiveQuery
      */
     public function actual($alias = null)
     {
-        $alias = empty($alias) ? '' : $alias . '.';
+        $alias = $alias ?: FiasHouse::tableName();
 
-        $this->andWhere(['>', "{$alias}enddate", 'NOW()']);
+        $this->andWhere(["{$alias}.actual" => true]);
 
         return $this;
     }
@@ -61,9 +61,13 @@ class FiasHouseQuery extends ActiveQuery
      */
     public function validForGisgkh($alias = null)
     {
-        $alias = empty($alias) ? '' : $alias . '.';
+        $alias = $alias ?: FiasHouse::tableName();
 
-        $this->andWhere("({$alias}fias_houseid IS NULL OR {$alias}fias_houseid = '')");
+        $this->andWhere([
+            "or",
+            ["$alias.gisgkh_guid" => null],
+            "$alias.gisgkh_guid = $alias.houseguid"
+        ]);
 
         return $this;
     }
@@ -142,7 +146,7 @@ class FiasHouseQuery extends ActiveQuery
     /**
      * По номеру корпуса
      * @param string $strucnum
-     * @param string $alias
+     * @param string $aliasN
      * @return $this
      */
     public function byStrucnum($strucnum, $alias = null)

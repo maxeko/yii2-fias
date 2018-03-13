@@ -31,7 +31,6 @@ class FiasAddrobjQuery extends ActiveQuery
      * Только актуальные записи (не исторические, и не копии)
      * Проверка
      * - по полю currstatus == 0 (статус актуальности КЛАДР4)
-     * - по полю copy (copy == false, не является копией) -- отсечение ФИАС-овских объектов там где есть ГИС-овские
      * @param string|null $alias
      * @return $this
      */
@@ -39,8 +38,7 @@ class FiasAddrobjQuery extends ActiveQuery
     {
         $alias = ($alias ? "{$alias}." : "");
 
-        // http://wiki.gis-lab.info/w/%D0%A4%D0%98%D0%90%D0%A1#.D0.A1.D1.82.D0.B0.D1.82.D1.83.D1.81_.D0.B0.D0.BA.D1.82.D1.83.D0.B0.D0.BB.D1.8C.D0.BD.D0.BE.D1.81.D1.82.D0.B8
-        $this->andWhere([$alias . "currstatus" => 0]);
+        $this->andWhere([$alias . "actual" => true]);
 
         return $this;
     }
@@ -68,7 +66,7 @@ class FiasAddrobjQuery extends ActiveQuery
     {
         $alias = empty($alias) ? '' : $alias . '.';
 
-        $this->andWhere("({$alias}fias_addrobjid IS NULL OR {$alias}fias_addrobjid = '')");
+        $this->andWhere("({$alias}fias_addrobjguid IS NULL OR {$alias}fias_addrobjguid = '')");
 
         return $this;
     }

@@ -28,6 +28,7 @@ use yii\console\Controller;
 use yii\db\ActiveRecord;
 use yii\db\Migration;
 use yii\helpers\BaseFileHelper;
+use yii\helpers\Console;
 
 /**
  * Функции импорта данных в справочник ФИАС из обменных форматов
@@ -56,7 +57,7 @@ class ImportController extends Controller
     private $classMap = [];
 
     /**
-     * Перечисление колонок в выгрузке ГИСа по-умолчанию
+     * Перечисление колонок в выгрузке ГИСа "Реестр добавленных адресов в структурированном виде"
      *
      * @var array
      */
@@ -90,7 +91,7 @@ class ImportController extends Controller
     /**
      * @inheritdoc
      */
-    function __construct($id, Module $module, array $config = [])
+    public function __construct($id, Module $module, array $config = [])
     {
         $this->classMap = [
             'actstat'    => FiasActstat::className(),
@@ -117,63 +118,64 @@ class ImportController extends Controller
 
         $this->gisColumns = [
             FiasAddrobj::tableName() => [
-                "aoid",
-                "aoguid",
-                "formalname",
-                "shortname",
-                "aolevel",
-                "parentguid",
-                "regioncode",
-                "autocode",
-                "areacode",
-                "citycode",
-                "ctarcode",
-                "placecode",
-                "streetcode",
-                "extrcode",
-                "sextcode",
-                "postalcode",
-                "offname",
-                "oktmo",
-                "previd",
-                "nextid",
-                null,
-                "startdate",
-                "enddate",
-                null,
-                null,
-                null,
-                "fias_addrobjid",
-                "fias_addrobjguid",
+                "aoid", // 1
+                "aoguid", // 2
+                "formalname", // 3
+                "shortname", // 4
+                "aolevel", // 5
+                "parentguid", // 6
+                "regioncode", // 7
+                "autocode", // 8
+                "areacode", // 9
+                "citycode", // 10
+                "ctarcode", // 11
+                "placecode", // 12
+                "streetcode", // 13
+                "extrcode", // 14
+                "sextcode", // 15
+                "postalcode", // 16
+                "offname", // 17
+                "oktmo", // 18
+                "previd", // 19
+                "nextid", // 20
+                "updatedate", // 21
+                "startdate", // 22
+                "enddate", // 23
+                "actual", // 24 Актуальность
+                null, // 25 Дата создания записи
+                null, // 26 Дата последнего изменения записи
+                "fias_addrobjid", // 27
+                "fias_addrobjguid", // 28
+                null, // 29 Источник данных: «1» – из РЗИС; «2» – из ФИАС
                 "gisgkh"
             ],
             FiasHouse::tableName() => [
-                "houseid",
-                "houseguid",
-                "aoguid",
-                null,
-                "housenum",
-                "buildnum",
-                "strucnum",
-                "eststatus",
-                "strstatus",
-                "oktmo",
-                "postalcode",
-                null,
-                "startdate",
-                "enddate",
-                null,
-                null,
-                null,
-                "fias_houseid",
-                "fias_houseguid",
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                "gisgkh" // дополнительная колонка
+                "houseid", // 1
+                "houseguid", // 2
+                "aoguid", // 3
+                null, // 4 Уникальный идентификатор записи адресного объекта в ФИАС (при наличии связи с ФИАС)
+                "housenum", // 5
+                "buildnum", // 6
+                "strucnum", // 7
+                "eststatus", // 8
+                "strstatus", // 9
+                "oktmo", // 10
+                "postalcode", // 11
+                "updatedate", // 12
+                "startdate", // 13
+                "enddate", // 14
+                "actual", // 15
+                null, // 16 дата создания записи
+                null, // 17 дата последнего изменения
+                "fias_houseid", // 18 id для записи пришедшей из ФИАС. При наличии связи с ФИАС
+                "fias_houseguid", // 19 Guid для записи пришедшей из ФИАС. При наличии связи с ФИАС
+                "gisgkh_guid", // 20 Если запись является дублем, то заполняется корневым гуидом родительской записи
+                null, // 21 Если дом является дочерним к агрегирующему дому, то заполняется его корневым гуидом
+                null, // 22 Заполняется TRUE если дом используется в каком-либо реестре в ГИС ЖКХ, иначе – FALSE
+                null, // 23 Заполняется TRUE если дом используется в каком-либо договоре в ГИС ЖКХ, иначе – FALSE
+                null, // 24 Заполняется TRUE если дом используется в РАО, иначе FALSE
+                null, // 25 Источник данных: «1» – из РЗИС; «2» – из ФИАС
+                "gisgkh"
             ]
         ];
 
@@ -205,28 +207,40 @@ class ImportController extends Controller
 
         $this->gisDataProcessors = [
             FiasHouse::tableName() => [
-                'housenum' => function($value){
-                    return strlen($value) > 20 ? false : $value;
+                'housenum' => function ($value) {
+                    return strlen($value) > 20 ? null : $value;
+                },
+                'actual' => function ($value) {
+                    return $value && ($value !== "f");
                 }
-            ]
+            ],
+            FiasAddrobj::tableName() => [
+                'actual' => function ($value) {
+                    return $value && ($value !== "f");
+                }
+            ],
         ];
 
         parent::__construct($id, $module, $config);
     }
 
+    /**
+     * Вот х/з че эта функция делает, пусть автор поикает
+     * @param string $name
+     * @param null $fromName
+     * @return bool|float|null|string|string[]
+     */
     private function ts($name, $fromName = null)
     {
         $prev = end($this->timeStamps);
         $this->timeStamps[$name] = microtime(true);
 
-        if (is_string($fromName) && !empty($this->timeStamps[$fromName]))
-        {
+        if (is_string($fromName) && !empty($this->timeStamps[$fromName])) {
             return round($this->timeStamps[$name] - $this->timeStamps[$fromName], 2);
         }
 
         if ($fromName === '@last') {
-            if ($prev !== false)
-            {
+            if ($prev !== false) {
                 return round($this->timeStamps[$name] - $prev, 2);
             }
             return false;
@@ -583,9 +597,9 @@ class ImportController extends Controller
     }
 
     /**
-     * Импорт дельты ГИСа
+     * Импорт Реестра добавленных адресов (дельта) ГИС ЖКХ
      *
-     * @param String $filename Путь к ZIP архиву, содержащему ZIP архивы
+     * @param string $filename путь к ZIP архиву (содержащему ZIP архивы по регионам)
      * @return int
      */
     public function actionGis($filename)
@@ -596,24 +610,23 @@ class ImportController extends Controller
 
         $extractDestinationFolder = "{$filename}_extracted";
 
-        $this->stdout("Импорт данных из {$filename}\n");
+        Console::output("Импорт данных из {$filename}");
 
         $zip = new \ZipArchive();
         $status = $zip->open($filename);
 
-        if ($status !== true)
-        {
-            $this->stderr("Не удалось открыть архив \"{$filename}\" (status code: {$status})\n");
+        if ($status !== true) {
+            Console::error("Не удалось открыть архив \"{$filename}\" (status code: {$status})");
             return 1;
         }
 
-        $this->stdout("В архиве обнаружено {$zip->numFiles} файлов\n");
-        $this->stdout("Извлечение файлов в {$extractDestinationFolder}\n");
+        Console::output("В архиве обнаружено {$zip->numFiles} файлов");
+        Console::output("Извлечение файлов в {$extractDestinationFolder}");
+
         $status = $zip->extractTo($extractDestinationFolder);
 
-        if (!$status)
-        {
-            $this->stderr("Ошибка извлечения файлов\n");
+        if (!$status) {
+            Console::error("Ошибка извлечения файлов");
             return 1;
         }
 
@@ -624,33 +637,29 @@ class ImportController extends Controller
         $archiveFiles = scandir($extractDestinationFolder);
         $archiveFilesCount = count($archiveFiles);
 
-        $this->stdout("Извлечено {$archiveFilesCount} архивов\n");
+        Console::output("Извлечено {$archiveFilesCount} архивов");
 
         // распаковка всех внутренних архивов
 
         $this->ts('sub_extracts_init');
 
-        for ($fileIndex = 2; $fileIndex < $archiveFilesCount; $fileIndex++)
-        {
-            if (substr(strtolower($archiveFiles[$fileIndex]), -4) != ".zip")
-            {
+        for ($fileIndex = 2; $fileIndex < $archiveFilesCount; $fileIndex++) {
+            if (substr(strtolower($archiveFiles[$fileIndex]), -4) != ".zip") {
                 continue;
             }
 
             $this->stdout("{$extractDestinationFolder}/{$archiveFiles[$fileIndex]}\n");
 
-            if (!$zip->open("{$extractDestinationFolder}/{$archiveFiles[$fileIndex]}"))
-            {
-                $this->stderr("Не удалось открыть архив\n");
+            if (!$zip->open("{$extractDestinationFolder}/{$archiveFiles[$fileIndex]}")) {
+                Console::error("Не удалось открыть архив");
                 continue;
             }
 
-            $this->stdout("Извлечение в {$extractDestinationFolder}\n");
+            Console::output("Извлечение в {$extractDestinationFolder}");
             $status = $zip->extractTo($extractDestinationFolder);
 
-            if (!$status)
-            {
-                $this->stderr("Ошибка извлечения файлов\n");
+            if (!$status) {
+                Console::error("Ошибка извлечения файлов");
                 continue;
             }
 
@@ -669,10 +678,8 @@ class ImportController extends Controller
 
         $this->ts('csv_process_init');
 
-        for ($fileIndex = 2; $fileIndex < $CsvFilesCount; $fileIndex++)
-        {
-            if (substr(strtolower($CsvFiles[$fileIndex]), -4) != ".csv")
-            {
+        for ($fileIndex = 2; $fileIndex < $CsvFilesCount; $fileIndex++) {
+            if (substr(strtolower($CsvFiles[$fileIndex]), -4) != ".csv") {
                 continue;
             }
 
@@ -683,24 +690,21 @@ class ImportController extends Controller
 
             // определение класса по имени файла
 
-            foreach ($this->classMap as $name => $className)
-            {
-                if (strpos(strtolower($CsvFiles[$fileIndex]), $name) !== false)
-                {
+            foreach ($this->classMap as $name => $className) {
+                if (strpos(strtolower($CsvFiles[$fileIndex]), $name) !== false) {
                     $modelClass = $className;
                     break;
                 }
             }
 
-            if (!$modelClass)
-            {
-                $this->stderr("Обработчик не определён\n");
+            if (!$modelClass) {
+                Console::error("Обработчик не определён");
                 continue;
             }
 
             /* @var ActiveRecord $model */
             $model = new $modelClass;
-            $db = $model->getDb();
+            $db = $model::getDb();
 
             // первичные ключи таблицы
             $primaries = $model->getPrimaryKey(true);
@@ -708,15 +712,10 @@ class ImportController extends Controller
             // данные для первичных ключей (для удаления дублей)
             $primariesValues = [];
 
-            // для определения копий
-            $copyIndexes = [];
-            $copies = [];
-
-            if (!count($primaries))
-            {
-                $this->stdout("В структуре таблицы \"{$model::tableName()}\" не определены первичные ключи\n");
-                continue;
-            }
+//            if (empty($primaries)) {
+//                Console::output("В структуре таблицы \"{$model::tableName()}\" не определены первичные ключи");
+//                continue;
+//            }
 
             $primaries = array_keys($primaries);
 
@@ -741,8 +740,7 @@ class ImportController extends Controller
             $std->time = 0.0;
             $std->skipped = 0;
 
-            if (empty($fullStatistic->tables[$model::tableName()]))
-            {
+            if (empty($fullStatistic->tables[$model::tableName()])) {
                 $fullStatistic->tables[$model::tableName()] = $std;
             }
 
@@ -752,15 +750,12 @@ class ImportController extends Controller
 
             // чтения CSV файла и обработка данных
 
-            while (($data = fgetcsv($fp, 0, ";")) !== false)
-            {
+            while (($data = fgetcsv($fp, 0, ";")) !== false) {
                 $row = [];
-                $copy = [];
 
                 // определение данных для импорта
 
-                for ($index = 0; $index < count($data); $index++)
-                {
+                for ($index = 0; $index < count($data); $index++) {
                     if (!isset($this->gisColumns[$model::tableName()][$index])) {
                         continue;
                     }
@@ -768,16 +763,11 @@ class ImportController extends Controller
                     $column = $this->gisColumns[$model::tableName()][$index];
                     $value = $data[$index];
 
-                    if ($column)
-                    {
-                        if (!empty($this->gisDataProcessors[$model::tableName()]) &&
-                            !empty($this->gisDataProcessors[$model::tableName()][$column]) &&
-                            is_callable($this->gisDataProcessors[$model::tableName()][$column]))
-                        {
+                    if ($column) {
+                        if (is_callable(@$this->gisDataProcessors[$model::tableName()][$column])) {
                             $value = call_user_func($this->gisDataProcessors[$model::tableName()][$column], $value);
 
-                            if ($value === false)
-                            {
+                            if ($value === null) {
                                 $std->skipped++;
                                 continue 2;
                             }
@@ -787,24 +777,10 @@ class ImportController extends Controller
 
                         // если текущая колонка определена как первичная
                         // сохраняем данные этой колонки для удаления дублей
-                        if (in_array($column, $primaries))
-                        {
+                        if (in_array($column, $primaries)) {
                             $primariesValues[$column][] = $value;
                         }
-
-                        if (!empty($copyIndexes[$index]) && $value) {
-                            // если колонка не определена моделью
-                            // она может указывать на копию, по этому
-                            // сохраняем данные о ссылке на копию для
-                            // последующей маркировки поля "copy"
-                            $copy[$copyIndexes[$index]] = $value;
-                        }
                     }
-                }
-
-                if (count($copy))
-                {
-                    $copies[] = $copy;
                 }
 
                 // данные для дополнительной колонки "gisgkh"
@@ -819,29 +795,25 @@ class ImportController extends Controller
                 $eof = feof($fp) || $fileSize == ftell($fp);
 
                 if ($rowsCount % $this->batchSize == 0 || $eof) {
-
-                    if (count($primariesValues)) {
+                    //if (count($primariesValues)) {
                         // удаление дублирующихся записей, для последующей замены новыми
-                        $deleted += $db->createCommand()->delete($model::tableName(), $primariesValues)->execute();
-                    }
+                        //$deleted += $db->createCommand()->delete($model::tableName(), $primariesValues)->execute();
+                    //}
 
-                    $inserted += $db->createCommand()->batchInsert($model::tableName(), array_filter($columns), $rows)->execute();
-
-                    if (count($copies))
-                    {
-                        $marked += $db->createCommand()->update($model::tableName(), [ 'copy' => true ], ['in', array_values($copyIndexes), $copies])->execute();
-                    }
+                    $inserted += $db->createCommand()->batchInsert(
+                        $model::tableName(),
+                        array_filter($columns),
+                        $rows
+                    )->execute();
 
                     $time = $this->ts('process_done', 'process_init');
 
                     $rows = [];
                     $primariesValues = [];
-                    $copies = [];
 
                     $this->stdout("Обработано {$rowsCount} записей за {$time} сек.\r");
 
-                    if ($eof)
-                    {
+                    if ($eof) {
                         $this->stdout("\n");
                     }
                 }
@@ -849,9 +821,8 @@ class ImportController extends Controller
 
             fclose($fp);
 
-            if ($rowsCount == 0)
-            {
-                $this->stdout("Нет данных\n");
+            if ($rowsCount == 0) {
+                Console::output("Нет данных");
             }
 
             $std->rows += $rowsCount;
@@ -864,12 +835,27 @@ class ImportController extends Controller
         $fullStatistic->process_done = $this->ts('csv_process_done', 'csv_process_init');
         $fullStatistic->done = $this->ts('done', 'init');
 
-        $this->stdout("\nИмпорт завершен за {$fullStatistic->done} сек. (распаковка архивов: {$fullStatistic->extractAll} сек., импорт: {$fullStatistic->process_done} сек.)\n");
+        Console::output(sprintf(
+            "Импорт завершен за %d сек. (распаковка архивов: %d сек., импорт: %d сек.)",
+            $fullStatistic->done,
+            $fullStatistic->extractAll,
+            $fullStatistic->process_done
+        ));
 
-        foreach ($fullStatistic->tables as $name => $table)
-        {
-            $this->stdout("В таблицу {$name} было добавлено {$table->inserted} и обновлено {$table->updated} записей из {$table->rows} за {$table->time} сек. ");
-            $this->stdout("Копией было помечено {$table->marked} записей. Пропущено {$table->skipped} записей\n");
+        foreach ($fullStatistic->tables as $name => $table) {
+            Console::output(sprintf(
+                "В таблицу %s было добавлено %d и обновлено %d записей из %d за %s сек. ",
+                $name,
+                $table->inserted,
+                $table->updated,
+                $table->rows,
+                $table->time
+            ));
+            Console::output(sprintf(
+                "Копией было помечено %d записей. Пропущено %d записей",
+                $table->marked,
+                $table->skipped
+            ));
         }
 
         BaseFileHelper::removeDirectory($extractDestinationFolder);
@@ -889,6 +875,7 @@ class ImportController extends Controller
         $classMap = [
             '/^.*DADDROBJ\.DBF$/'   => FiasDaddrobj::className(),
             '/^.*ADDROBJ\.DBF$/'    => FiasAddrobj::className(),
+            '/^.*ADDROB\d\d\.DBF$/' => FiasAddrobj::className(),
             '/^.*LANDMARK\.DBF$/'   => FiasLandmark::className(),
             '/^.*DHOUSE\.DBF$/'     => FiasDhouse::className(),
             '/^.*HOUSE\d\d\.DBF$/'  => FiasHouse::className(),

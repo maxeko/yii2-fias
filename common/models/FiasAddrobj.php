@@ -35,8 +35,8 @@ use \ejen\fias\Module;
  * @property string $nextid Идентификатор записи связывания с последующей исторической записью
  * @property string $code Код адресного элемента одной строкой с признаком актуальности из классификационного кода
  * @property string $plaincode Код адресного элемента одной строкой без признака актуальности (последних двух цифр)
- * @property integer $actstatus Статус последней исторической записи в жизненном цикле адресного объекта: 0 – Не последняя, 1 - Последняя
- * @property integer $livestatus Статус актуальности адресного объекта ФИАС на текущую дату: 0 – Не актуальный, 1 - Актуальный
+ * @property integer $actstatus Статус последней исторической записи: 0 – Не последняя, 1 - Последняя
+ * @property integer $livestatus Статус актуальности на текущую дату: 0 – Не актуальный, 1 - Актуальный
  * @property integer $centstatus Статус центра
  * @property integer $operstatus Статус действия над записью – причина появления записи (см. OperationStatuses)
  * @property integer $currstatus Статус актуальности КЛАДР 4 (последние две цифры в коде)
@@ -48,8 +48,9 @@ use \ejen\fias\Module;
  * @property string $fulltext_search полное наименование адресообразующего элемента для текстового поиска
  * @property integer $houses_count количество адресных объектов в подчинении
  *
- * @property string $fias_addrobjguid Для строк из "Реестра добавленных адресов ГИС ЖКХ". GUID соответствующей записи ФИАС (если есть)
- * @property string $fias_addrobjid Для строк из "Реестра добавленных адресов ГИС ЖКХ". ID соответствующей записи ФИАС (если есть)
+ * @property boolean $actual false если адрес был деактуализирован (в ФИАС или при "выравнивании" справочника)
+ * @property string $fias_addrobjguid Для строк из "Реестра добавленных адресов ГИС ЖКХ". Соотв-й GUID ФИАС (если есть)
+ * @property string $fias_addrobjid Для строк из "Реестра добавленных адресов ГИС ЖКХ". Соотв-й ФИАС ID (если есть)
  *
  * @property FiasHouse[] $houses
  * @property FiasAddrobj[] $parent
@@ -223,7 +224,7 @@ class FiasAddrobj extends ActiveRecord
             ];
             $parts = array_filter($parts);
             $this->fulltext_search = join(', ', $parts);
-            $this->save();
+            $this->save(false, ["fulltext_search"]);
         }
 
         return $this->fulltext_search;
@@ -320,8 +321,7 @@ class FiasAddrobj extends ActiveRecord
                 $query->andWhere(['parent2.aoguid' => $data['region_id']]);
             }], true)->
         indexBy('houseguid')->
-        andWhere(['>', 'fias_house.enddate', 'NOW()'])->
-        andWhere(['fias_house.copy' => false]);
+        andWhere(['>', 'fias_house.enddate', 'NOW()']);
 
         if (!empty($data['getCount'])) {
             $regionsCount = $query->count();
@@ -399,8 +399,7 @@ class FiasAddrobj extends ActiveRecord
                 $query->andWhere(['parent2.currstatus' => 0]);
             }], true)->
         indexBy('houseguid')->
-        andWhere(['>', 'fias_house.enddate', 'NOW()'])->
-        andWhere(['fias_house.copy' => false]);
+        andWhere(['>', 'fias_house.enddate', 'NOW()']);
 
         if (!empty($data['getCount'])) {
             $citysCount = $query->count();
@@ -573,8 +572,7 @@ class FiasAddrobj extends ActiveRecord
                 $query->andWhere(['parent2.currstatus' => 0]);
             }])->
         where($where)->
-        andWhere(['>', 'fias_house.enddate', 'NOW()'])->
-        andWhere(['fias_house.copy' => false]);
+        andWhere(['>', 'fias_house.enddate', 'NOW()']);
 
         if (!empty($data['getCount'])) {
             $housesCount = $query->count();
@@ -655,7 +653,6 @@ class FiasAddrobj extends ActiveRecord
         ")->
         orderBy(["(substring(fias_house.housenum, '^[0-9]+'))::int,substring(fias_house.housenum, '[^0-9_].*$')" => SORT_ASC])->
         andWhere(['>', 'enddate', 'NOW()'])->
-        andWhere(['copy' => false])->
         limit($count);
 
         if (!empty($formalname) && $formalname != '*') {
