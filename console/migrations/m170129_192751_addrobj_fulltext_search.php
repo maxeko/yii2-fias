@@ -26,6 +26,7 @@ class m170129_192751_addrobj_fulltext_search extends Migration
     public function safeUp()
     {
         $this->addColumn(FiasAddrobj::tableName(), 'fulltext_search', $this->string(1024)->null());
+        $this->addColumn(FiasAddrobj::tableName(), 'fulltext_search_upper', $this->string(1024)->null());
     }
 
     /**
@@ -34,5 +35,6 @@ class m170129_192751_addrobj_fulltext_search extends Migration
     public function safeDown()
     {
         $this->dropColumn(FiasAddrobj::tableName(), 'fulltext_search');
+        $this->dropColumn(FiasAddrobj::tableName(), 'fulltext_search_upper');
     }
 }

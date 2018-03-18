@@ -119,7 +119,7 @@ class IndexesController extends Controller
         $logger->step('Индекс для поиска адресообразующих элементов по полному названию');
         $migration->createIndex('fias_addrobj_fulltext_search_ix', FiasAddrobj::tableName(), [
             'regioncode',
-            'fulltext_search',
+            'fulltext_search_upper',
             'houses_count',
             'actual',
             'gisgkh',
@@ -145,7 +145,7 @@ class IndexesController extends Controller
         // http://wiki.gis-lab.info/w/%D0%A4%D0%98%D0%90%D0%A1#.D0.A1.D1.82.D0.B0.D1.82.D1.83.D1.81_.D0.B0.D0.BA.D1.82.D1.83.D0.B0.D0.BB.D1.8C.D0.BD.D0.BE.D1.81.D1.82.D0.B8
         $migration->update("fias_addrobj", ["actual"  => false], [
             "and",
-            ["currstatus" => "1"],
+            ["not", ["currstatus" => 0]],
             ["gisgkh" => false]
         ]);
         $migration->dropIndex('fias_addrobj_currstatus_ix', FiasAddrobj::tableName());

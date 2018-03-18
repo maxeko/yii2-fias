@@ -46,6 +46,7 @@ use \ejen\fias\Module;
  * @property string $cadnum Кадастровый номер
  * @property integer $divtype Тип деления: 0 – не определено, 1 – муниципальное, 2 – административное
  * @property string $fulltext_search полное наименование адресообразующего элемента для текстового поиска
+ * @property string $fulltext_search_upper в верхнем регистре, с заменой Ё на Е
  * @property integer $houses_count количество адресных объектов в подчинении
  *
  * @property boolean $actual false если адрес был деактуализирован (в ФИАС или при "выравнивании" справочника)
@@ -224,6 +225,7 @@ class FiasAddrobj extends ActiveRecord
             ];
             $parts = array_filter($parts);
             $this->fulltext_search = join(', ', $parts);
+            $this->fulltext_search_upper = str_replace("Ё", "Е", strtoupper($this->fulltext_search));
             $this->save(false, ["fulltext_search"]);
         }
 
