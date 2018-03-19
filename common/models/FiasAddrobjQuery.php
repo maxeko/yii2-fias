@@ -148,6 +148,7 @@ class FiasAddrobjQuery extends ActiveQuery
         $alias = ($alias ? "{$alias}." : "");
 
         $parts = mb_split('[\s,.]+', $q);
+        $parts = array_filter($parts);
 
         foreach ($parts as $part) {
             $this->andWhere([
