@@ -128,6 +128,22 @@ class FiasHouseQuery extends ActiveQuery
     }
 
     /**
+     * Сортировать по номеру в порядке натуральной сотрировки
+     * @param string $alias
+     * @return $this
+     */
+    public function naturalOrder($alias = null)
+    {
+        $alias = $alias ?: FiasHouse::tableName();
+
+        return $this->orderBy([
+            "CASE {$alias}.housenum WHEN '' THEN 0 ELSE (substring({$alias}.housenum, '^[0-9]+'))::int END" => SORT_ASC,
+            "{$alias}.buildnum" => SORT_ASC,
+            "{$alias}.strucnum" => SORT_ASC,
+        ]);
+    }
+
+    /**
      * По номеру дома
      * @param string $housenum
      * @param string $alias
