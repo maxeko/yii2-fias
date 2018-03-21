@@ -119,14 +119,24 @@ class IndexesController extends Controller
         $logger->step('Индекс для поиска адресообразующих элементов по полному названию');
         $migration->createIndex('fias_addrobj_fulltext_search_ix', FiasAddrobj::tableName(), [
             'regioncode',
+            'fulltext_search',
+            'houses_count',
+            'actual',
+            'gisgkh',
+            'fias_addrobjguid'
+        ]);
+
+        $logger->step('Индекс для поиска адресообразующих элементов по полному названию 2');
+        $migration->createIndex('fias_addrobj_fulltext_search_upper_ix', FiasAddrobj::tableName(), [
+            'regioncode',
             'fulltext_search_upper',
             'houses_count',
             'actual',
             'gisgkh',
             'fias_addrobjguid'
         ]);
-        $logger->completed();
 
+        $logger->completed();
     }
 
     public function actionBuildCachedFields()

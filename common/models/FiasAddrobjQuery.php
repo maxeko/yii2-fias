@@ -124,13 +124,14 @@ class FiasAddrobjQuery extends ActiveQuery
      */
     public function byFullName($q, $alias = null)
     {
-        $alias = ($alias ? "{$alias}." : "");
+        $alias = $alias ?: FiasAddrobj::tableName();
 
         $parts = mb_split('[\s,.]+', $q);
 
         foreach ($parts as $part) {
+            $part = str_replace("Ё", "Е", mb_strtoupper($part));
             $this->andWhere([
-                'like', "upper({$alias}fulltext_search COLLATE \"ru_RU\")", mb_strtoupper($part)
+                'like', "{$alias}.fulltext_search_upper", $part
             ]);
         }
 
@@ -145,21 +146,22 @@ class FiasAddrobjQuery extends ActiveQuery
      */
     public function byFullNameStrictParts($q, $alias = null)
     {
-        $alias = ($alias ? "{$alias}." : "");
+        $alias = $alias ?: FiasAddrobj::tableName();
 
         $parts = mb_split('[\s,.]+', $q);
         $parts = array_filter($parts);
 
         foreach ($parts as $part) {
+            $part = str_replace("Ё", "Е", mb_strtoupper($part));
             $this->andWhere([
                 'or',
-                ['like', "upper({$alias}fulltext_search COLLATE \"ru_RU\")", mb_strtoupper($part) . " %", false],
-                ['like', "upper({$alias}fulltext_search COLLATE \"ru_RU\")", "% " . mb_strtoupper($part) . " %", false],
-                ['like', "upper({$alias}fulltext_search COLLATE \"ru_RU\")", "% " . mb_strtoupper($part), false],
-                ['like', "upper({$alias}fulltext_search COLLATE \"ru_RU\")", "% " . mb_strtoupper($part) . ".%", false],
-                ['like', "upper({$alias}fulltext_search COLLATE \"ru_RU\")", "%." . mb_strtoupper($part) . " %", false],
-                ['like', "upper({$alias}fulltext_search COLLATE \"ru_RU\")", "%." . mb_strtoupper($part) . ".%", false],
-                ['like', "upper({$alias}fulltext_search COLLATE \"ru_RU\")", "% " . mb_strtoupper($part) . ",%", false],
+                ['like', "{$alias}.fulltext_search_upper", $part . " %", false],
+                ['like', "{$alias}.fulltext_search_upper", "% " . $part . " %", false],
+                ['like', "{$alias}.fulltext_search_upper", "% " . $part, false],
+                ['like', "{$alias}.fulltext_search_upper", "% " . $part . ".%", false],
+                ['like', "{$alias}.fulltext_search_upper", "%." . $part . " %", false],
+                ['like', "{$alias}.fulltext_search_upper", "%." . $part . ".%", false],
+                ['like', "{$alias}.fulltext_search_upper", "% " . $part . ",%", false],
             ]);
         }
 
