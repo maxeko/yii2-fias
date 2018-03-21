@@ -52,7 +52,9 @@ class HousesController extends Controller
             'housenum',
             'buildnum',
             'strucnum',
-            'strstatus'
+            'eststatus',
+            'strstatus',
+            'gisgkh'
         ];
 
         $extraFields = [
@@ -64,6 +66,12 @@ class HousesController extends Controller
         $responseData = ArrayHelper::toArray($query->all(), [
             FiasHouse::className() => array_merge($fields, $extraFields)
         ]);
+
+        foreach ($responseData as &$value) {
+            if ($value["gisgkh"] === true) {
+                $value["name"] = $value["name"] . " (ГИС ЖКХ)";
+            }
+        }
 
         if (\Yii::$app->request->isAjax) {
             return $responseData;

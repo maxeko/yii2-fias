@@ -64,9 +64,19 @@ class FiasHouseQuery extends ActiveQuery
         $alias = $alias ?: FiasHouse::tableName();
 
         $this->andWhere([
-            "or",
-            ["$alias.gisgkh_guid" => null],
-            "$alias.gisgkh_guid = $alias.houseguid"
+            "and",
+            [
+                "or",
+                ["$alias.gisgkh_guid" => null],
+                ["$alias.gisgkh_guid" => ""],
+                "$alias.gisgkh_guid = $alias.houseguid"
+            ],
+            [
+                "or",
+                ["$alias.fias_houseguid" => null],
+                ["$alias.fias_houseguid" => ""],
+                ["not", "$alias.fias_houseguid = $alias.houseguid"],
+            ]
         ]);
 
         return $this;
