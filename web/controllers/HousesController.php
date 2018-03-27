@@ -69,7 +69,7 @@ class HousesController extends Controller
 
         foreach ($responseData as &$value) {
             if ($value["gisgkh"] === true) {
-                $value["name"] = $value["name"] . " (ГИС ЖКХ)";
+                $value["name"] = $value["name"] . " (код временного адреса ГИС ЖКХ)";
             }
         }
 

@@ -129,6 +129,17 @@ class FiasHouse extends ActiveRecord
      ****************/
 
     /**
+     * Запись не является дублем для ГИС ЖКХ
+     * @return boolean
+     */
+    public function validForGisgkh()
+    {
+        return
+            $this->actual &&
+            (empty($this->gisgkh_guid) || ($this->gisgkh_guid == $this->houseguid));
+    }
+
+    /**
      * Получить полную строку "дом, корпус, строение"
      * @return string
      */
