@@ -57,7 +57,7 @@ class IndexesController extends Controller
         $this->runAction("drop");
 
         $logger = Module::getInstance()->actionLogger;
-        $logger->action("Построение индексов для базы ФИАС", 7);
+        $logger->action("Построение индексов для базы ФИАС", 9);
 
         $migration = new Migration();
         $migration->db = Module::getInstance()->getDb();
@@ -135,7 +135,21 @@ class IndexesController extends Controller
             'gisgkh',
             'fias_addrobjguid'
         ]);
+        $logger->completed();
 
+        $logger->step('Индексы для поиска дубликатов');
+        $migration->createIndex('fias_house_houseguid_actual_ix', FiasAddrobj::tableName(), [
+            'houseguid',
+            'actual',
+        ]);
+        $migration->createIndex('fias_house_fias_houseguid_actual_ix', FiasAddrobj::tableName(), [
+            'fias_houseguid',
+            'actual',
+        ]);
+        $migration->createIndex('fias_house_gisgkh_guid_actual_ix', FiasAddrobj::tableName(), [
+            'gisgkh_guid',
+            'actual',
+        ]);
         $logger->completed();
     }
 
@@ -175,8 +189,8 @@ class IndexesController extends Controller
         $migration->createIndex('fias_house_houseguid_ix', FiasHouse::tableName(), ["actual", "gisgkh", "houseguid", "fias_houseguid"]);
         $migration->execute(<<<SQL
 UPDATE fias_house SET gisgkh_guid = t.guid FROM (
-    SELECT houseguid, fias_houseguid, (CASE WHEN gisgkh_guid IS NULL THEN houseguid ELSE gisgkh_guid END) AS guid FROM fias_house
-    WHERE gisgkh = true AND actual = true AND NOT(fias_houseguid IS NULL)
+    SELECT houseguid, fias_houseguid, (CASE WHEN gisgkh_guid IS NULL OR gisgkh_guid = '' THEN houseguid ELSE gisgkh_guid END) AS guid FROM fias_house
+    WHERE gisgkh = true AND actual = true AND NOT(fias_houseguid IS NULL) AND NOT(fias_houseguid = '')
 ) AS t WHERE
 fias_house.houseguid = t.fias_houseguid AND
 NOT(t.houseguid = t.guid) AND

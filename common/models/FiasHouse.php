@@ -36,6 +36,7 @@ use \ejen\fias\Module;
  *
  * @property string $fias_houseguid Для строк из "Реестра добавленных адресов ГИС ЖКХ". Соотв-й GUID ФИАС (если есть)
  * @property string $fias_houseid Для строк из "Реестра добавленных адресов ГИС ЖКХ". Соотв-й ФИАС ID (если есть)
+ * @property string $gisgkh_guid
  *
  * @property FiasAddrobj[] $addrobj
  *
