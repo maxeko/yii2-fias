@@ -219,17 +219,25 @@ class FiasAddrobj extends ActiveRecord
     public function getFulltextSearchIndexValue()
     {
         if (empty($this->fulltext_search) || empty($this->fulltext_search_upper)) {
-            $parts = [
-                !empty($this->parentguid) ? (($parent = $this->getParent()->last()->one()) ? $parent->getFulltextSearchIndexValue() : '') : '',
-                trim($this->formalname) . " " . trim($this->shortname)
-            ];
-            $parts = array_filter($parts);
-            $this->fulltext_search = join(', ', $parts);
-            $this->fulltext_search_upper = str_replace("Ё", "Е", strtoupper($this->fulltext_search));
-            $this->save(false, ["fulltext_search", "fulltext_search_upper"]);
+            $this->updateSearchIndexValue();
         }
 
         return $this->fulltext_search;
+    }
+
+    /**
+     * Обновить полное имя объекта для полнотекстового поиска
+     */
+    public function updateSearchIndexValue()
+    {
+        $parts = [
+            !empty($this->parentguid) ? (($parent = $this->getParent()->last()->one()) ? $parent->getFulltextSearchIndexValue() : '') : '',
+            trim($this->formalname) . " " . trim($this->shortname)
+        ];
+        $parts = array_filter($parts);
+        $this->fulltext_search = join(', ', $parts);
+        $this->fulltext_search_upper = str_replace("Ё", "Е", mb_strtoupper($this->fulltext_search));
+        $this->save(false, ["fulltext_search", "fulltext_search_upper"]);
     }
 
     /* *

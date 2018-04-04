@@ -302,7 +302,7 @@ SQL
          */
         foreach ($query->batch() as $addresses) {
             foreach ($addresses as $address) {
-                $address->getFulltextSearchIndexValue();
+                $address->updateSearchIndexValue();
                 Console::updateProgress(++$processed, $count);
             }
         }
