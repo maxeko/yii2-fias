@@ -218,7 +218,7 @@ class FiasAddrobj extends ActiveRecord
      */
     public function getFulltextSearchIndexValue()
     {
-        if (empty($this->fulltext_search)) {
+        if (empty($this->fulltext_search) || empty($this->fulltext_search_upper)) {
             $parts = [
                 !empty($this->parentguid) ? (($parent = $this->getParent()->last()->one()) ? $parent->getFulltextSearchIndexValue() : '') : '',
                 trim($this->formalname) . " " . trim($this->shortname)
@@ -226,7 +226,7 @@ class FiasAddrobj extends ActiveRecord
             $parts = array_filter($parts);
             $this->fulltext_search = join(', ', $parts);
             $this->fulltext_search_upper = str_replace("Ё", "Е", strtoupper($this->fulltext_search));
-            $this->save(false, ["fulltext_search"]);
+            $this->save(false, ["fulltext_search", "fulltext_search_upper"]);
         }
 
         return $this->fulltext_search;

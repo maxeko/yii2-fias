@@ -17,6 +17,10 @@ use yii\helpers\Console;
  */
 class IndexesController extends Controller
 {
+    /**
+     * Удаление всех индексов БД ФИАС
+     * @throws \yii\db\Exception
+     */
     public function actionDrop()
     {
         $logger = Module::getInstance()->actionLogger;
@@ -52,6 +56,11 @@ class IndexesController extends Controller
         }
     }
 
+    /**
+     * Постоение всех индексов, неоходимых для штатной работы БД ФИАС
+     * @throws \yii\base\InvalidRouteException
+     * @throws \yii\console\Exception
+     */
     public function actionBuild()
     {
         $this->runAction("drop");
@@ -138,21 +147,32 @@ class IndexesController extends Controller
         $logger->completed();
 
         $logger->step('Индексы для поиска дубликатов');
-        $migration->createIndex('fias_house_houseguid_actual_ix', FiasAddrobj::tableName(), [
+        $migration->createIndex('fias_house_houseguid_actual_ix', FiasHouse::tableName(), [
             'houseguid',
             'actual',
         ]);
-        $migration->createIndex('fias_house_fias_houseguid_actual_ix', FiasAddrobj::tableName(), [
+        $migration->createIndex('fias_house_fias_houseguid_actual_ix', FiasHouse::tableName(), [
             'fias_houseguid',
             'actual',
         ]);
-        $migration->createIndex('fias_house_gisgkh_guid_actual_ix', FiasAddrobj::tableName(), [
+        $migration->createIndex('fias_house_gisgkh_guid_actual_ix', FiasHouse::tableName(), [
             'gisgkh_guid',
             'actual',
         ]);
         $logger->completed();
     }
 
+    /**
+     * Наполнение кэширующих полей для ускорения выборок:
+     *  - признак актуальности адресообразующего элемента
+     *  - признак актуальности адреса
+     *  - поле для полнотекстового поиска адресообразующих элементов
+     *  - связь ФИАС GUID-ов с GUID-ами рекомендуемыми к использованию в ГИС ЖКХ
+     *  - полное количество дочерних адресов для адресообразующих элементов
+     * @throws \yii\base\InvalidRouteException
+     * @throws \yii\console\Exception
+     * @throws \yii\db\Exception
+     */
     public function actionBuildCachedFields()
     {
         $this->runAction("drop");
@@ -186,17 +206,44 @@ class IndexesController extends Controller
         $logger->completed();
 
         $logger->step("Установка связи ФИАС GUID-ов с GUID-ами рекомендуемыми к использованию в ГИС ЖКХ");
-        $migration->createIndex('fias_house_houseguid_ix', FiasHouse::tableName(), ["actual", "gisgkh", "houseguid", "fias_houseguid"]);
-        $migration->execute(<<<SQL
-UPDATE fias_house SET gisgkh_guid = t.guid FROM (
-    SELECT houseguid, fias_houseguid, (CASE WHEN gisgkh_guid IS NULL OR gisgkh_guid = '' THEN houseguid ELSE gisgkh_guid END) AS guid FROM fias_house
-    WHERE gisgkh = true AND actual = true AND NOT(fias_houseguid IS NULL) AND NOT(fias_houseguid = '')
-) AS t WHERE
-fias_house.houseguid = t.fias_houseguid AND
-NOT(t.houseguid = t.guid) AND
-gisgkh = false;
-SQL
+        $migration->createIndex(
+            "fias_house_fias_houseguid_ix",
+            FiasHouse::tableName(),
+            ["actual", "gisgkh", "fias_houseguid", "houseguid"]
         );
+        $migration->createIndex(
+            "fias_house_houseguid_ix",
+            FiasHouse::tableName(),
+            ["actual", "gisgkh", "houseguid"]
+        );
+        $query = FiasHouse::find()
+            ->select(["houseguid", "fias_houseguid", "gisgkh_guid"])
+            ->where([
+                "gisgkh" => true,
+                "actual" => true
+            ])
+            ->andWhere("not (fias_houseguid = houseguid)")
+            ->andWhere(["not", ["fias_houseguid" => null]])
+            ->andWhere(["not", ["fias_houseguid" => ""]])
+            ->orderBy(["houseguid" => SORT_ASC]);
+        $processed = 0;
+        $count = $query->count();
+        Console::startProgress($processed, $count, "Обработано: ", false);
+        while ($items = $query->offset($processed)->limit(100000)->asArray()->all()) {
+            foreach ($items as $item) {
+                $fiasGuid = $item["fias_houseguid"];
+                $gisgkhGuid = $item["gisgkh_guid"] ?: $item["houseguid"];
+                $migration->db->createCommand(<<<SQL
+UPDATE fias_house SET gisgkh_guid = :gGuid
+WHERE gisgkh = FALSE AND actual = TRUE AND houseguid = :fGuid
+SQL
+                )->bindValues([":gGuid" => $gisgkhGuid, ":fGuid" => $fiasGuid])->execute();
+                Console::updateProgress(++$processed, $count);
+            }
+        }
+        Console::endProgress();
+
+        $migration->dropIndex('fias_house_fias_houseguid_ix', FiasHouse::tableName());
         $migration->dropIndex('fias_house_houseguid_ix', FiasHouse::tableName());
         $logger->completed();
 
@@ -217,6 +264,19 @@ SQL
         $logger->completed();
 
         $logger->step('Обновление кэша "полное название адресообразующего элемента"');
+
+        $this->runAction("rebuild-fulltext-search-index");
+
+        $logger->completed();
+    }
+
+    /**
+     * Вычисление поля для поиска по полному названию адресообразующего элемента
+     */
+    public function actionRebuildFulltextSearchIndex()
+    {
+        $migration = new Migration();
+        $migration->db = Module::getInstance()->getDb();
 
         $migration->addPrimaryKey('fias_addrobj_pk', FiasAddrobj::tableName(), ["aoid"]);
         $migration->createIndex('fias_addrobj_parent_ix', FiasAddrobj::tableName(), [
@@ -250,173 +310,6 @@ SQL
 
         $migration->dropIndex('fias_addrobj_parent_ix', FiasAddrobj::tableName());
         $migration->dropPrimaryKey('fias_addrobj_pk', FiasAddrobj::tableName());
-
-        $logger->completed();
-    }
-
-    /**
-     * Построить все индексы
-     */
-    public function actionBuildAll()
-    {
-        $logger = Module::getInstance()->actionLogger;
-        $logger->action('Построение индексов для базы ФИАС', 9);
-
-        $migration = new Migration();
-        $migration->db = Module::getInstance()->getDb();
-
-        $logger->step('Первичный ключ для таблицы объектов адресации');
-        $migration->addPrimaryKey("fias_house_houseid_pk", FiasHouse::tableName(), ['houseid']);
-        $logger->completed();
-
-        $logger->step('Индекс для поиска объекта адресации по GUID');
-        $migration->createIndex('fias_house_houseguid_enddate_copy_ix', FiasHouse::tableName(), [
-            "houseguid",
-            "enddate",
-            "copy"
-        ]);
-        $logger->completed();
-
-        $logger->step('Индекс для поиска объектов адресации по адресообразующему элементу и "номеру дома"');
-        $migration->createIndex('fias_house_housenum_aoguid_enddate_copy_ix', FiasHouse::tableName(), [
-            "housenum",
-            "aoguid",
-            "enddate",
-            "copy"
-        ]);
-        $logger->completed();
-
-        $logger->step('Индекс для поиска объектов адресации по адресообразующему элементу');
-        $migration->createIndex('fias_house_aoguid_enddate_copy_ix', FiasHouse::tableName(), [
-            "aoguid",
-            "enddate",
-            "copy"
-        ]);
-        $logger->completed();
-
-        $logger->step('Первичный ключ для таблицы адресообразующих элементов');
-        $migration->addPrimaryKey("fias_addrobj_aoid_pk", FiasAddrobj::tableName(), ['aoid']);
-        $logger->completed();
-
-        $logger->step('Индекс для быстрого поиска актуального адресообразующего элемента по GUID');
-        $migration->createIndex('fias_aoguid_ix', FiasAddrobj::tableName(), [
-            'aoguid',
-            'copy',
-            'currstatus'
-        ]);
-        $logger->completed();
-
-        $logger->step('Индекс для быстрого поиска актуальных адресообразующих элементов по названию и уровню');
-        $migration->createIndex('fias_aolevel_ix', FiasAddrobj::tableName(), [
-            'aolevel',
-            'formalname',
-            'copy',
-            'currstatus'
-        ]);
-        $logger->completed();
-
-        $logger->step('Индекс для быстрого поиска актуальных адресообразующих элементов по родительскому элементу');
-        $migration->createIndex('fias_parentguid_ix', FiasAddrobj::tableName(), [
-            'parentguid',
-            'formalname',
-            'copy',
-            'currstatus'
-        ]);
-        $logger->completed();
-
-        $logger->step('Индекс для поиска адресообразующих элементов по полному названию');
-        $this->buildFulltextSearchIndex();
-        $logger->completed();
-    }
-
-    /**
-     * Удалить все исторические записи
-     * @deprecated
-     */
-    public function actionRemoveHistory()
-    {
-        $logger = Module::getInstance()->actionLogger;
-        $logger->action('Удаление историческиз записей', 7);
-        $migration = new Migration();
-        $migration->db = Module::getInstance()->getDb();
-        $addrobjTable = FiasAddrobj::tableName();
-        $houseTable = FiasHouse::tableName();
-
-        $logger->step('Создание временного индекса для работы с таблицей адресообрзазующих элементов');
-        $migration->createIndex('fias_addrobj_currstatus_ix', FiasAddrobj::tableName(), ['currstatus']);
-        $logger->completed();
-
-        $logger->step('Удаление исторических записей из таблицы адресообрзазующих элементов');
-        $migration->execute("DELETE FROM {$addrobjTable} WHERE NOT(currstatus = 0)");
-        $logger->completed();
-
-        $logger->step('Удаление подчинённых адресообразующих элементов, оставшихся без родителя ("битые" записи)');
-        $migration->execute("
-          DELETE FROM {$addrobjTable} 
-          WHERE aoid IN (
-            SELECT a2.aoid 
-            FROM {$addrobjTable} AS a2 
-            LEFT OUTER JOIN {$addrobjTable} AS a1 ON a2.parentguid = a1.aoguid 
-            WHERE a1.aoid IS NULL AND NOT(a2.aolevel = 1)
-          );
-        ");
-        $logger->completed();
-
-        $logger->step('Удаление временного индекса для работы с таблицей адресообрзующих элементов');
-        $migration->dropIndex('fias_addrobj_currstatus_ix', FiasAddrobj::tableName());
-        $logger->completed();
-
-        $logger->step('Создание временного индекса для работы с таблицей объектов адресации');
-        $migration->createIndex('fias_house_enddate_ix', FiasHouse::tableName(), ['enddate']);
-        $logger->completed();
-
-        $logger->step('Удаление исторических записей из таблицы объектов адресации');
-        $migration->execute("DELETE FROM {$houseTable} WHERE enddate < now()");
-        $logger->completed();
-
-        $logger->step('Удаление временного индекса для работы с таблицей объектов адресации');
-        $migration->dropIndex('fias_house_enddate_ix', FiasHouse::tableName());
-        $logger->completed();
-
-    }
-
-    /**
-     * Построение индекса для поиска по полному названию адресообразующего элемента
-     */
-    public function actionRebuildFulltextSearchIndex()
-    {
-        $logger = Module::getInstance()->actionLogger;
-        $logger->action('Построение индекса для поиска по полному названию адресообразующего элемента', 4);
-
-        $migration = new Migration();
-        $migration->db = Module::getInstance()->getDb();
-
-        $logger->step('Удаление индекса');
-        $this->dropFulltextSearchIndex();
-        $logger->completed();
-
-
-        $logger->step('Очиска старого кэша');
-        $migration->update(FiasAddrobj::tableName(), ['fulltext_search' => null]);
-        $logger->completed();
-
-        $logger->step('Заполнение кэша полных названий');
-        $totalCount = FiasAddrobj::find()->count();
-        $logger->setItemsCount($totalCount);
-        $processed = 0;
-        while ($processed < $totalCount) {
-            $addresses = FiasAddrobj::find()->orderBy('aoid')->offset($processed)->limit(1000)->all();
-            foreach ($addresses as $address) {
-                $address->getFulltextSearchIndexValue();
-                $processed++;
-            }
-            $logger->updateStatus($processed);
-        }
-        $logger->completed();
-
-        $logger->step('Построение индекса');
-        $this->buildFulltextSearchIndex();
-        $logger->completed();
     }
 
     /**
@@ -442,6 +335,7 @@ SQL
 
     /**
      * Создание индексов необходимых для импорта дампа ФИАС
+     * @deprecated сейчас импорт дампа производится на базу без индексов
      */
     public function actionBuildFiasImport()
     {
@@ -462,6 +356,7 @@ SQL
 
     /**
      * Создание индексов необходимых для импорта дельты ГИС ЖКХ
+     * @deprecated сейчас импорт дельты производится на базу без индексов
      */
     public function actionBuildGisDelta()
     {
@@ -490,33 +385,4 @@ SQL
         $logger->completed();
     }
 
-    /**
-     * Удалить индекс для понотестового поиска адресов
-     */
-    private function dropFulltextSearchIndex()
-    {
-        $migration = new Migration();
-        $migration->db = Module::getInstance()->getDb();
-
-        try {
-            $migration->dropIndex('fias_addrobj_fulltext_search_ix', FiasAddrobj::tableName());
-        } catch (Exception $exception) {
-            // ничего страшного :)
-        }
-    }
-
-    /**
-     * Постоить индекс для понотестового поиска адресов
-     */
-    private function buildFulltextSearchIndex()
-    {
-        $migration = new Migration();
-        $migration->db = Module::getInstance()->getDb();
-        $migration->createIndex('fias_addrobj_fulltext_search_ix', FiasAddrobj::tableName(), [
-            'regioncode',
-            'fulltext_search',
-            'houses_count',
-            'actual'
-        ]);
-    }
 }
