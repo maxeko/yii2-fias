@@ -5,6 +5,7 @@ namespace ejen\fias\common\models;
 use ejen\fias\common\helpers\FiasHelper;
 use \yii\db\ActiveRecord;
 use \ejen\fias\Module;
+use yii\helpers\ArrayHelper;
 
 /**
  * Объект адресации
@@ -127,6 +128,61 @@ class FiasHouse extends ActiveRecord
     /* *
      * Public helpers
      ****************/
+
+    /**
+     * Получить массив альтернативных GUID-ов которые могут использоваться для ссылки на данный адрес в ГИС ЖКХ
+     * @param bool $includeThis включить в массив houseguid данной записи
+     * @param bool $includeDoubles включить в массив неактуальные guid-ы (дубли)
+     * @return string[]
+     */
+    public function getAlternateGisgkgHouseguids($includeThis = true, $includeDoubles = true)
+    {
+        $query = FiasHouse::find()->select(["houseguid"])
+            ->andWhere([
+                "or",
+                ["houseguid" => $this->houseguid],
+                ["gisgkh_guid" => $this->houseguid],
+                ["fias_houseguid" => $this->houseguid]
+            ]);
+
+        if ($includeThis) {
+            $query->andWhere([
+                "or",
+                ["houseguid" => $this->houseguid],
+                ["gisgkh_guid" => $this->houseguid],
+                ["fias_houseguid" => $this->houseguid]
+            ]);
+        } else {
+            $query->andWhere([
+                "and",
+                [
+                    "or",
+                    ["gisgkh_guid" => $this->houseguid],
+                    ["fias_houseguid" => $this->houseguid]
+                ],
+                [
+                    "not",
+                    ["houseguid" => $this->houseguid],
+                ]
+            ]);
+        }
+
+        if (!$includeDoubles) {
+            $query->andWhere([
+                "and",
+                ["actual" => true],
+                [
+                    "or",
+                    ["gisgkh" => false],
+                    "gisgkh_guid = houseguid",
+                    ["gisgkh_guid" => null],
+                    ["gisgkh_guid" => ""],
+                ]
+            ]);
+        }
+
+        return array_values(array_unique(ArrayHelper::map($query->all(), "houseguid", "houseguid")));
+    }
 
     /**
      * Запись не является дублем для ГИС ЖКХ
